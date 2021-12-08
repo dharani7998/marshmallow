@@ -864,6 +864,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 many=many,
                 partial=partial,
                 unknown=unknown,
+                skip_data_validate=skip_data_validate,
             )
             # Run field-level validation
             self._invoke_field_validators(
