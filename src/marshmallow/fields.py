@@ -291,7 +291,7 @@ class Field(FieldABC):
         return And(*self.validators, error=self.error_messages["validator_failed"])
     
     @property
-    def _data_validate_all(self, value):
+    def _data_validate_all(self):
         return And(*self.data_validators, error=self.error_messages['validator_failed'])
 
     def make_error(self, key: str, **kwargs) -> ValidationError:
