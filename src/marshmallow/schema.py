@@ -589,6 +589,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         partial=False,
         unknown=RAISE,
         index=None,
+        skip_validate: typing.Optional[bool] = False,
         skip_data_validate: typing.Optional[bool] = False
     ) -> typing.Union[_T, typing.List[_T]]:
         """Deserialize ``data``.
@@ -623,6 +624,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                             partial=partial,
                             unknown=unknown,
                             index=idx,
+                            skip_validate=skip_validate,
                             skip_data_validate=skip_data_validate,
                         ),
                     )
@@ -658,7 +660,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 else:
                     d_kwargs["partial"] = partial
                 getter = lambda val: field_obj.deserialize(
-                    val, field_name, data, skip_data_validate=skip_data_validate, **d_kwargs
+                    val, field_name, data, skip_validate=skip_validate, skip_data_validate=skip_data_validate, **d_kwargs
                 )
                 value = self._call_and_store(
                     getter_func=getter,
@@ -697,6 +699,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         many: typing.Optional[bool] = None,
         partial: typing.Optional[typing.Union[bool, types.StrSequenceOrSet]] = None,
         unknown: typing.Optional[str] = None,
+        skip_validate: typing.Optional[bool] = False,
         skip_data_validate: typing.Optional[bool] = False
     ):
         """Deserialize a data structure to an object defined by this Schema's fields.
@@ -720,7 +723,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
             if invalid data are passed.
         """
         return self._do_load(
-            data, many=many, partial=partial, unknown=unknown, postprocess=True, skip_data_validate=skip_data_validate
+            data, many=many, partial=partial, unknown=unknown, postprocess=True,skip_validate=skip_validate, skip_data_validate=skip_data_validate
         )
 
     def loads(
@@ -730,6 +733,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         many: typing.Optional[bool] = None,
         partial: typing.Optional[typing.Union[bool, types.StrSequenceOrSet]] = None,
         unknown: typing.Optional[str] = None,
+        skip_validate: typing.Optional[bool] = False,
         skip_data_validate: typing.Optional[bool] = False,
         **kwargs,
     ):
@@ -754,7 +758,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
             if invalid data are passed.
         """
         data = self.opts.render_module.loads(json_data, **kwargs)
-        return self.load(data, many=many, partial=partial, unknown=unknown, skip_data_validate=skip_data_validate)
+        return self.load(data, many=many, partial=partial, unknown=unknown, skip_validate=skip_validate, skip_data_validate=skip_data_validate)
 
     def _run_validator(
         self,
@@ -819,6 +823,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         partial: typing.Optional[typing.Union[bool, types.StrSequenceOrSet]] = None,
         unknown: typing.Optional[str] = None,
         postprocess: bool = True,
+        skip_validate: typing.Optional[bool] = False,
         skip_data_validate: typing.Optional[bool] = False
     ):
         """Deserialize `data`, returning the deserialized result.
@@ -864,6 +869,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 many=many,
                 partial=partial,
                 unknown=unknown,
+                skip_validate=skip_validate,
                 skip_data_validate=skip_data_validate,
             )
             # Run field-level validation
@@ -871,26 +877,27 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 error_store=error_store, data=result, many=many
             )
             # Run schema-level validation
-            if self._has_processors(VALIDATES_SCHEMA):
-                field_errors = bool(error_store.errors)
-                self._invoke_schema_validators(
-                    error_store=error_store,
-                    pass_many=True,
-                    data=result,
-                    original_data=data,
-                    many=many,
-                    partial=partial,
-                    field_errors=field_errors,
-                )
-                self._invoke_schema_validators(
-                    error_store=error_store,
-                    pass_many=False,
-                    data=result,
-                    original_data=data,
-                    many=many,
-                    partial=partial,
-                    field_errors=field_errors,
-                )
+            if not skip_validate:
+                if self._has_processors(VALIDATES_SCHEMA):
+                    field_errors = bool(error_store.errors)
+                    self._invoke_schema_validators(
+                        error_store=error_store,
+                        pass_many=True,
+                        data=result,
+                        original_data=data,
+                        many=many,
+                        partial=partial,
+                        field_errors=field_errors,
+                    )
+                    self._invoke_schema_validators(
+                        error_store=error_store,
+                        pass_many=False,
+                        data=result,
+                        original_data=data,
+                        many=many,
+                        partial=partial,
+                        field_errors=field_errors,
+                    )
             errors = error_store.errors
             # Run post processors
             if not errors and postprocess and self._has_processors(POST_LOAD):
