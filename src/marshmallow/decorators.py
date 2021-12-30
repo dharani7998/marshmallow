@@ -66,6 +66,7 @@ POST_DUMP = "post_dump"
 PRE_LOAD = "pre_load"
 POST_LOAD = "post_load"
 VALIDATES = "validates"
+DATA_VALIDATES = "data_validates"
 VALIDATES_SCHEMA = "validates_schema"
 
 
@@ -81,6 +82,13 @@ def validates(field_name: str) -> Callable[..., Any]:
     :param str field_name: Name of the field that the method validates.
     """
     return set_hook(None, VALIDATES, field_name=field_name)
+
+def data_validates(field_name: str) -> Callable[..., Any]:
+    """Register a field data_validator.
+    
+    :param str field_name: Name of the field that the method validates.
+    """
+    return set_hook(None, DATA_VALIDATES, field_name=field_name)
 
 
 def validates_schema(

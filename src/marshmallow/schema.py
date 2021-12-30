@@ -21,6 +21,7 @@ from marshmallow.decorators import (
     PRE_DUMP,
     PRE_LOAD,
     VALIDATES,
+    DATA_VALIDATES,
     VALIDATES_SCHEMA,
 )
 from marshmallow.utils import (
@@ -878,8 +879,8 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 self._invoke_field_validators(
                     error_store=error_store, data=result, many=many
                 )
+
                 # Run schema-level validation
-            
                 if self._has_processors(VALIDATES_SCHEMA):
                     field_errors = bool(error_store.errors)
                     self._invoke_schema_validators(
@@ -900,6 +901,12 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                         partial=partial,
                         field_errors=field_errors,
                     )
+
+            if not skip_data_validate:
+                self._invoke_field_data_validators(
+                    error_store=error_store, data=result, many=many
+                )
+
             errors = error_store.errors
             # Run post processors
             if not errors and postprocess and self._has_processors(POST_LOAD):
@@ -1113,9 +1120,15 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         return data
 
     def _invoke_field_validators(self, *, error_store: ErrorStore, data, many: bool):
-        for attr_name in self._hooks[VALIDATES]:
+        self._invoke_validators(error_store=error_store, data=data, many=many, decorator=VALIDATES)
+    
+    def _invoke_field_data_validators(self, *, error_store: ErrorStore, data, many: bool):
+        self._invoke_validators(error_store=error_store, data=data, many=many, decorator=DATA_VALIDATES)
+    
+    def _invoke_validators(self, *, error_store: ErrorStore, data, many: bool, decorator: str):
+        for attr_name in self._hooks[decorator]:
             validator = getattr(self, attr_name)
-            validator_kwargs = validator.__marshmallow_hook__[VALIDATES]
+            validator_kwargs = validator.__marshmallow_hook__[decorator]
             field_name = validator_kwargs["field_name"]
 
             try:
