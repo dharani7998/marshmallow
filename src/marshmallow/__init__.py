@@ -7,6 +7,7 @@ from marshmallow.decorators import (
     pre_load,
     post_load,
     validates,
+    data_validates,
     validates_schema,
 )
 from marshmallow.utils import EXCLUDE, INCLUDE, RAISE, pprint, missing
