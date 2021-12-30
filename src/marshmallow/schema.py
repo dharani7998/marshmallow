@@ -872,12 +872,14 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 skip_validate=skip_validate,
                 skip_data_validate=skip_data_validate,
             )
-            # Run field-level validation
-            self._invoke_field_validators(
-                error_store=error_store, data=result, many=many
-            )
-            # Run schema-level validation
+            
             if not skip_validate:
+                # Run field-level validation
+                self._invoke_field_validators(
+                    error_store=error_store, data=result, many=many
+                )
+                # Run schema-level validation
+            
                 if self._has_processors(VALIDATES_SCHEMA):
                     field_errors = bool(error_store.errors)
                     self._invoke_schema_validators(
