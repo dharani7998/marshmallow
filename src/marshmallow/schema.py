@@ -23,6 +23,7 @@ from marshmallow.decorators import (
     VALIDATES,
     DATA_VALIDATES,
     VALIDATES_SCHEMA,
+    DATA_VALIDATES_SCHEMA
 )
 from marshmallow.utils import (
     RAISE,
@@ -806,10 +807,40 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         .. versionadded:: 1.1.0
         """
         try:
-            self._do_load(data, many=many, partial=partial, postprocess=False)
+            self._do_load(data, many=many, partial=partial, postprocess=False, skip_data_validate=True)
         except ValidationError as exc:
-            return typing.cast(typing.Dict[str, typing.List[str]], exc.messages)
-        return {}
+            return typing.cast(typing.Dict[str, typing.List[str]], exc.messages), typing.cast(typing.Dict[str, typing.List[str]], exc.valid_data)
+        return {}, data
+    
+    def data_validate(
+        self,
+        data: typing.Union[
+            typing.Mapping[str, typing.Any],
+            typing.Iterable[typing.Mapping[str, typing.Any]],
+        ],
+        *,
+        many: typing.Optional[bool] = None,
+        partial: typing.Optional[typing.Union[bool, types.StrSequenceOrSet]] = None,
+    ) -> typing.Dict[str, typing.List[str]]:
+        """Validate `data` against the schema, returning a dictionary of
+        validation errors.
+
+        :param data: The data to validate.
+        :param many: Whether to validate `data` as a collection. If `None`, the
+            value for `self.many` is used.
+        :param partial: Whether to ignore missing fields and not require
+            any fields declared. Propagates down to ``Nested`` fields as well. If
+            its value is an iterable, only missing fields listed in that iterable
+            will be ignored. Use dot delimiters to specify nested fields.
+        :return: A dictionary of validation errors.
+
+        .. versionadded:: 1.1.0
+        """
+        try:
+            self._do_load(data, many=many, partial=partial, postprocess=False, skip_validate=True)
+        except ValidationError as exc:
+            return typing.cast(typing.Dict[str, typing.List[str]], exc.messages), typing.cast(typing.Dict[str, typing.List[str]], exc.valid_data)
+        return {}, data
 
     ##### Private Helpers #####
 
@@ -890,6 +921,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                         original_data=data,
                         many=many,
                         partial=partial,
+                        decorator=VALIDATES_SCHEMA,
                         field_errors=field_errors,
                     )
                     self._invoke_schema_validators(
@@ -899,6 +931,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                         original_data=data,
                         many=many,
                         partial=partial,
+                        decorator=VALIDATES_SCHEMA,
                         field_errors=field_errors,
                     )
 
@@ -906,6 +939,29 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 self._invoke_field_data_validators(
                     error_store=error_store, data=result, many=many
                 )
+
+                if self._has_processors(DATA_VALIDATES_SCHEMA):
+                    field_errors = bool(error_store.errors)
+                    self._invoke_schema_validators(
+                        error_store=error_store,
+                        pass_many=True,
+                        data=result,
+                        original_data=data,
+                        many=many,
+                        partial=partial,
+                        decorator=DATA_VALIDATES_SCHEMA,
+                        field_errors=field_errors,
+                    )
+                    self._invoke_schema_validators(
+                        error_store=error_store,
+                        pass_many=False,
+                        data=result,
+                        original_data=data,
+                        many=many,
+                        partial=partial,
+                        decorator=DATA_VALIDATES_SCHEMA,
+                        field_errors=field_errors,
+                    )
 
             errors = error_store.errors
             # Run post processors
@@ -1181,12 +1237,13 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         original_data,
         many: bool,
         partial: typing.Union[bool, types.StrSequenceOrSet],
+        decorator: str,
         field_errors: bool = False,
     ):
-        for attr_name in self._hooks[(VALIDATES_SCHEMA, pass_many)]:
+        for attr_name in self._hooks[(decorator, pass_many)]:
             validator = getattr(self, attr_name)
             validator_kwargs = validator.__marshmallow_hook__[
-                (VALIDATES_SCHEMA, pass_many)
+                (decorator, pass_many)
             ]
             if field_errors and validator_kwargs["skip_on_field_errors"]:
                 continue

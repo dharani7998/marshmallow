@@ -68,6 +68,7 @@ POST_LOAD = "post_load"
 VALIDATES = "validates"
 DATA_VALIDATES = "data_validates"
 VALIDATES_SCHEMA = "validates_schema"
+DATA_VALIDATES_SCHEMA = "data_validates_schema"
 
 
 class MarshmallowHook:
@@ -82,6 +83,7 @@ def validates(field_name: str) -> Callable[..., Any]:
     :param str field_name: Name of the field that the method validates.
     """
     return set_hook(None, VALIDATES, field_name=field_name)
+
 
 def data_validates(field_name: str) -> Callable[..., Any]:
     """Register a field data_validator.
@@ -119,6 +121,39 @@ def validates_schema(
     return set_hook(
         fn,
         (VALIDATES_SCHEMA, pass_many),
+        pass_original=pass_original,
+        skip_on_field_errors=skip_on_field_errors,
+    )
+
+
+def data_validates_schema(
+    fn: Optional[Callable[..., Any]] = None,
+    pass_many: bool = False,
+    pass_original: bool = False,
+    skip_on_field_errors: bool = True,
+) -> Callable[..., Any]:
+    """Register a schema-level validator.
+
+    By default it receives a single object at a time, transparently handling the ``many``
+    argument passed to the `Schema`'s :func:`~marshmallow.Schema.validate` call.
+    If ``pass_many=True``, the raw data (which may be a collection) is passed.
+
+    If ``pass_original=True``, the original data (before unmarshalling) will be passed as
+    an additional argument to the method.
+
+    If ``skip_on_field_errors=True``, this validation method will be skipped whenever
+    validation errors have been detected when validating fields.
+
+    .. versionchanged:: 3.0.0b1
+        ``skip_on_field_errors`` defaults to `True`.
+
+    .. versionchanged:: 3.0.0
+        ``partial`` and ``many`` are always passed as keyword arguments to
+        the decorated method.
+    """
+    return set_hook(
+        fn,
+        (DATA_VALIDATES_SCHEMA, pass_many),
         pass_original=pass_original,
         skip_on_field_errors=skip_on_field_errors,
     )
