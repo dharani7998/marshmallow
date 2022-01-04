@@ -791,6 +791,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         *,
         many: typing.Optional[bool] = None,
         partial: typing.Optional[typing.Union[bool, types.StrSequenceOrSet]] = None,
+        raise_error: typing.Optional[bool] = False
     ) -> typing.Dict[str, typing.List[str]]:
         """Validate `data` against the schema, returning a dictionary of
         validation errors.
@@ -809,8 +810,9 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         try:
             self._do_load(data, many=many, partial=partial, postprocess=False, skip_data_validate=True)
         except ValidationError as exc:
-            return typing.cast(typing.Dict[str, typing.List[str]], exc.messages), typing.cast(typing.Dict[str, typing.List[str]], exc.valid_data)
-        return {}, data
+            if raise_error: raise exc
+            return typing.cast(typing.Dict[str, typing.List[str]], exc.messages)
+        return {}
     
     def data_validate(
         self,
@@ -821,6 +823,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         *,
         many: typing.Optional[bool] = None,
         partial: typing.Optional[typing.Union[bool, types.StrSequenceOrSet]] = None,
+        raise_error: typing.Optional[bool] = False
     ) -> typing.Dict[str, typing.List[str]]:
         """Validate `data` against the schema, returning a dictionary of
         validation errors.
@@ -839,8 +842,9 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         try:
             self._do_load(data, many=many, partial=partial, postprocess=False, skip_validate=True)
         except ValidationError as exc:
-            return typing.cast(typing.Dict[str, typing.List[str]], exc.messages), typing.cast(typing.Dict[str, typing.List[str]], exc.valid_data)
-        return {}, data
+            if raise_error: raise exc
+            return typing.cast(typing.Dict[str, typing.List[str]], exc.messages)
+        return {}
 
     ##### Private Helpers #####
 
