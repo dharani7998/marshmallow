@@ -157,8 +157,8 @@ class Field(FieldABC):
         attribute: str | None = None,
         validate: None
         | (
-            typing.Callable[[typing.Any], typing.Any]
-            | typing.Iterable[typing.Callable[[typing.Any], typing.Any]]
+            typing.Callable[[typing.Any, typing.Any], typing.Any]
+            | typing.Iterable[typing.Callable[[typing.Any, typing.Any], typing.Any]]
         ) = None,
         required: bool = False,
         allow_none: bool | None = None,
@@ -263,7 +263,7 @@ class Field(FieldABC):
         """Perform validation on ``value``. Raise a :exc:`ValidationError` if validation
         does not succeed.
         """
-        self._validate_all(value)
+        self._validate_all(self, value)
 
     @property
     def _validate_all(self):

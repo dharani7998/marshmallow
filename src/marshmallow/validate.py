@@ -8,6 +8,7 @@ from itertools import zip_longest
 from operator import attrgetter
 
 from marshmallow import types
+from marshmallow.fields import Field
 from marshmallow.exceptions import ValidationError
 
 _T = typing.TypeVar("_T")
@@ -38,7 +39,7 @@ class Validator(ABC):
         return ""
 
     @abstractmethod
-    def __call__(self, value: typing.Any) -> typing.Any:
+    def __call__(self, field: Field, value: typing.Any) -> typing.Any:
         ...
 
 
@@ -63,19 +64,21 @@ class And(Validator):
 
     default_error_message = "Invalid value."
 
-    def __init__(self, *validators: types.Validator, error: str | None = None):
+    def __init__(
+        self, *validators: typing.Callable | types.Validator, error: str | None = None
+    ):
         self.validators = tuple(validators)
         self.error = error or self.default_error_message  # type: str
 
     def _repr_args(self) -> str:
         return f"validators={self.validators!r}"
 
-    def __call__(self, value: typing.Any) -> typing.Any:
+    def __call__(self, field: Field, value: typing.Any) -> typing.Any:
         errors = []
         kwargs = {}
         for validator in self.validators:
             try:
-                r = validator(value)
+                r = validator(field, value)
                 if not isinstance(validator, Validator) and r is False:
                     raise ValidationError(self.error)
             except ValidationError as err:
@@ -164,7 +167,7 @@ class URL(Validator):
     def _format_error(self, value) -> str:
         return self.error.format(input=value)
 
-    def __call__(self, value: str) -> str:
+    def __call__(self, field: Field, value: str) -> str:
         message = self._format_error(value)
         if not value:
             raise ValidationError(message)
@@ -217,7 +220,7 @@ class Email(Validator):
     def _format_error(self, value: str) -> str:
         return self.error.format(input=value)
 
-    def __call__(self, value: str) -> str:
+    def __call__(self, field: Field, value: str) -> str:
         message = self._format_error(value)
 
         if not value or "@" not in value:
@@ -305,7 +308,7 @@ class Range(Validator):
     def _format_error(self, value: _T, message: str) -> str:
         return (self.error or message).format(input=value, min=self.min, max=self.max)
 
-    def __call__(self, value: _T) -> _T:
+    def __call__(self, field: Field, value: _T) -> _T:
         if self.min is not None and (
             value < self.min if self.min_inclusive else value <= self.min
         ):
@@ -368,7 +371,7 @@ class Length(Validator):
             input=value, min=self.min, max=self.max, equal=self.equal
         )
 
-    def __call__(self, value: typing.Sized) -> typing.Sized:
+    def __call__(self, field: Field, value: typing.Sized) -> typing.Sized:
         length = len(value)
 
         if self.equal is not None:
@@ -408,7 +411,7 @@ class Equal(Validator):
     def _format_error(self, value: _T) -> str:
         return self.error.format(input=value, other=self.comparable)
 
-    def __call__(self, value: _T) -> _T:
+    def __call__(self, field: Field, value: _T) -> _T:
         if value != self.comparable:
             raise ValidationError(self._format_error(value))
         return value
@@ -450,14 +453,14 @@ class Regexp(Validator):
         return self.error.format(input=value, regex=self.regex.pattern)
 
     @typing.overload
-    def __call__(self, value: str) -> str:
+    def __call__(self, field: Field, value: str) -> str:
         ...
 
     @typing.overload
-    def __call__(self, value: bytes) -> bytes:
+    def __call__(self, field: Field, value: bytes) -> bytes:
         ...
 
-    def __call__(self, value):
+    def __call__(self, field: Field, value):
         if self.regex.match(value) is None:
             raise ValidationError(self._format_error(value))
 
@@ -489,7 +492,7 @@ class Predicate(Validator):
     def _format_error(self, value: typing.Any) -> str:
         return self.error.format(input=value, method=self.method)
 
-    def __call__(self, value: typing.Any) -> typing.Any:
+    def __call__(self, field: Field, value: typing.Any) -> typing.Any:
         method = getattr(value, self.method)
 
         if not method(**self.kwargs):
@@ -519,7 +522,7 @@ class NoneOf(Validator):
     def _format_error(self, value) -> str:
         return self.error.format(input=value, values=self.values_text)
 
-    def __call__(self, value: typing.Any) -> typing.Any:
+    def __call__(self, field: Field, value: typing.Any) -> typing.Any:
         try:
             if value in self.iterable:
                 raise ValidationError(self._format_error(value))
@@ -561,7 +564,7 @@ class OneOf(Validator):
             input=value, choices=self.choices_text, labels=self.labels_text
         )
 
-    def __call__(self, value: typing.Any) -> typing.Any:
+    def __call__(self, field: Field, value: typing.Any) -> typing.Any:
         try:
             if value not in self.choices:
                 raise ValidationError(self._format_error(value))
@@ -612,7 +615,7 @@ class ContainsOnly(OneOf):
         value_text = ", ".join(str(val) for val in value)
         return super()._format_error(value_text)
 
-    def __call__(self, value: typing.Sequence[_T]) -> typing.Sequence[_T]:
+    def __call__(self, field: Field, value: typing.Sequence[_T]) -> typing.Sequence[_T]:
         # We can't use set.issubset because does not handle unhashable types
         for val in value:
             if val not in self.choices:
@@ -637,7 +640,7 @@ class ContainsNoneOf(NoneOf):
         value_text = ", ".join(str(val) for val in value)
         return super()._format_error(value_text)
 
-    def __call__(self, value: typing.Sequence[_T]) -> typing.Sequence[_T]:
+    def __call__(self, field: Field, value: typing.Sequence[_T]) -> typing.Sequence[_T]:
         for val in value:
             if val in self.iterable:
                 raise ValidationError(self._format_error(value))

@@ -40,7 +40,7 @@ class AuthorSchema(Schema):
 
 
 # Custom validator
-def must_not_be_blank(data):
+def must_not_be_blank(field, data):
     if not data:
         raise ValidationError("Data not provided.")
 
