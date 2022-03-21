@@ -66,6 +66,7 @@ from typing import Any, Callable, Dict, Optional, Tuple, Union, cast
 PRE_DUMP = "pre_dump"
 POST_DUMP = "post_dump"
 PRE_LOAD = "pre_load"
+PRE_VALIDATE = "pre_validate"
 POST_LOAD = "post_load"
 VALIDATES = "validates"
 VALIDATES_SCHEMA = "validates_schema"
@@ -75,6 +76,12 @@ class MarshmallowHook:
     __marshmallow_hook__ = (
         None
     )  # type: Optional[Dict[Union[Tuple[str, bool], str], Any]]
+
+
+def pre_validate(
+    fn: Callable[..., Any] | None = None, pass_many: bool = False
+) -> Callable[..., Any]:
+    return set_hook(fn, (PRE_VALIDATE, pass_many))
 
 
 def validates(field_name: str) -> Callable[..., Any]:

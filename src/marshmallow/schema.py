@@ -22,6 +22,7 @@ from marshmallow.decorators import (
     POST_LOAD,
     PRE_DUMP,
     PRE_LOAD,
+    PRE_VALIDATE,
     VALIDATES,
     VALIDATES_SCHEMA,
 )
@@ -856,37 +857,10 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 partial=partial,
                 unknown=unknown,
             )
-            # Run field-level validation
-            self._invoke_field_validators(
-                error_store=error_store, data=result, many=many
-            )
-            # Run schema-level validation
-            if self._has_processors(VALIDATES_SCHEMA):
-                field_errors = bool(error_store.errors)
-                self._invoke_schema_validators(
-                    error_store=error_store,
-                    pass_many=True,
-                    data=result,
-                    original_data=data,
-                    many=many,
-                    partial=partial,
-                    field_errors=field_errors,
-                )
-                self._invoke_schema_validators(
-                    error_store=error_store,
-                    pass_many=False,
-                    data=result,
-                    original_data=data,
-                    many=many,
-                    partial=partial,
-                    field_errors=field_errors,
-                )
-            errors = error_store.errors
-            # Run post processors
-            if not errors and postprocess and self._has_processors(POST_LOAD):
+            if self._has_processors(PRE_VALIDATE):
                 try:
-                    result = self._invoke_load_processors(
-                        POST_LOAD,
+                    self._invoke_load_processors(
+                        PRE_VALIDATE,
                         result,
                         many=many,
                         original_data=data,
@@ -894,6 +868,46 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                     )
                 except ValidationError as err:
                     errors = err.normalized_messages()
+                    result = None
+            if not errors:
+                # Run field-level validation
+                self._invoke_field_validators(
+                    error_store=error_store, data=result, many=many
+                )
+                # Run schema-level validation
+                if self._has_processors(VALIDATES_SCHEMA):
+                    field_errors = bool(error_store.errors)
+                    self._invoke_schema_validators(
+                        error_store=error_store,
+                        pass_many=True,
+                        data=result,
+                        original_data=data,
+                        many=many,
+                        partial=partial,
+                        field_errors=field_errors,
+                    )
+                    self._invoke_schema_validators(
+                        error_store=error_store,
+                        pass_many=False,
+                        data=result,
+                        original_data=data,
+                        many=many,
+                        partial=partial,
+                        field_errors=field_errors,
+                    )
+                errors = error_store.errors
+                # Run post processors
+                if not errors and postprocess and self._has_processors(POST_LOAD):
+                    try:
+                        result = self._invoke_load_processors(
+                            POST_LOAD,
+                            result,
+                            many=many,
+                            original_data=data,
+                            partial=partial,
+                        )
+                    except ValidationError as err:
+                        errors = err.normalized_messages()
         if errors:
             exc = ValidationError(errors, data=data, valid_data=result)
             self.handle_error(exc, data, many=many, partial=partial)
