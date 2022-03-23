@@ -586,6 +586,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         error_store: ErrorStore,
         many: bool = False,
         partial=False,
+        skip_validate: bool = False,
         unknown=RAISE,
         index=None,
     ) -> _T | list[_T]:
@@ -619,6 +620,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                             error_store=error_store,
                             many=False,
                             partial=partial,
+                            skip_validate=skip_validate,
                             unknown=unknown,
                             index=idx,
                         ),
@@ -655,7 +657,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 else:
                     d_kwargs["partial"] = partial
                 getter = lambda val: field_obj.deserialize(
-                    val, field_name, data, **d_kwargs
+                    val, field_name, data, skip_validate=skip_validate, **d_kwargs
                 )
                 value = self._call_and_store(
                     getter_func=getter,
@@ -682,6 +684,61 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                             key,
                             (index if index_errors else None),
                         )
+        return ret_d
+
+    def _validate_fields(
+        self,
+        data: (
+            typing.Mapping[str, typing.Any]
+            | typing.Iterable[typing.Mapping[str, typing.Any]]
+        ),
+        *,
+        error_store: ErrorStore,
+        many: bool = False,
+        index=None,
+    ) -> _T | list[_T]:
+        """ """
+        index_errors = self.opts.index_errors
+        index = index if index_errors else None
+        if many:
+            ret_l = [
+                typing.cast(
+                    _T,
+                    self._validate_fields(
+                        typing.cast(typing.Mapping[str, typing.Any], d),
+                        error_store=error_store,
+                        many=False,
+                        index=idx,
+                    ),
+                )
+                for idx, d in enumerate(data)
+            ]
+            return ret_l
+
+        ret_d = self.dict_class()
+        if not isinstance(data, Mapping):
+            error_store.store_error([self.error_messages["type"]], index=index)
+        else:
+            for attr_name, field_obj in self.load_fields.items():
+                field_name = (
+                    field_obj.data_key if field_obj.data_key is not None else attr_name
+                )
+                deserialized_value = data.get(field_name, missing)
+                if deserialized_value is missing:
+                    continue
+
+                getter = lambda val: field_obj._validate(val)
+                value = self._call_and_store(
+                    getter_func=getter,
+                    data=deserialized_value,
+                    field_name=field_name,
+                    error_store=error_store,
+                    index=index,
+                )
+
+                key = field_obj.attribute or attr_name
+                set_value(ret_d, key, value)
+
         return ret_d
 
     def load(
@@ -803,7 +860,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
 
     ##### Private Helpers #####
 
-    def _do_load(
+    '''def _do_load(
         self,
         data: (
             typing.Mapping[str, typing.Any]
@@ -908,6 +965,111 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                         )
                     except ValidationError as err:
                         errors = err.normalized_messages()
+        if errors:
+            exc = ValidationError(errors, data=data, valid_data=result)
+            self.handle_error(exc, data, many=many, partial=partial)
+            raise exc
+
+        return result'''
+
+    def _do_load(
+        self,
+        data: (
+            typing.Mapping[str, typing.Any]
+            | typing.Iterable[typing.Mapping[str, typing.Any]]
+        ),
+        *,
+        many: bool | None = None,
+        partial: bool | types.StrSequenceOrSet | None = None,
+        unknown: str | None = None,
+        postprocess: bool = True,
+    ):
+        """Deserialize `data`, returning the deserialized result.
+        This method is private API.
+
+        :param data: The data to deserialize.
+        :param many: Whether to deserialize `data` as a collection. If `None`, the
+            value for `self.many` is used.
+        :param partial: Whether to validate required fields. If its
+            value is an iterable, only fields listed in that iterable will be
+            ignored will be allowed missing. If `True`, all fields will be allowed missing.
+            If `None`, the value for `self.partial` is used.
+        :param unknown: Whether to exclude, include, or raise an error for unknown
+            fields in the data. Use `EXCLUDE`, `INCLUDE` or `RAISE`.
+            If `None`, the value for `self.unknown` is used.
+        :param postprocess: Whether to run post_load methods..
+        :return: Deserialized data
+        """
+        error_store = ErrorStore()
+        errors = {}  # type: dict[str, list[str]]
+        many = self.many if many is None else bool(many)
+        unknown = unknown or self.unknown
+        result = None  # type: list | dict | None
+        if partial is None:
+            partial = self.partial
+        # Run preprocessors
+
+        try:
+            if self._has_processors(PRE_LOAD):
+                processed_data = self._invoke_load_processors(
+                    PRE_LOAD, data, many=many, original_data=data, partial=partial
+                )
+            else:
+                processed_data = data
+
+            skip_validate = self._has_processors(PRE_VALIDATE)
+            result = self._deserialize(
+                processed_data,
+                error_store=error_store,
+                many=many,
+                partial=partial,
+                skip_validate=skip_validate,
+                unknown=unknown,
+            )
+
+            if skip_validate:
+                self._invoke_load_processors(
+                    PRE_VALIDATE, result, many=many, original_data=data, partial=partial
+                )
+                self._validate_fields(result, error_store=error_store, many=many)
+            self._invoke_field_validators(
+                error_store=error_store, data=result, many=many
+            )
+
+            if self._has_processors(VALIDATES_SCHEMA):
+                field_errors = bool(error_store.errors)
+                self._invoke_schema_validators(
+                    error_store=error_store,
+                    pass_many=True,
+                    data=result,
+                    original_data=data,
+                    many=many,
+                    partial=partial,
+                    field_errors=field_errors,
+                )
+                self._invoke_schema_validators(
+                    error_store=error_store,
+                    pass_many=False,
+                    data=result,
+                    original_data=data,
+                    many=many,
+                    partial=partial,
+                    field_errors=field_errors,
+                )
+            errors = error_store.errors
+            # Run post processors
+            if not errors and postprocess and self._has_processors(POST_LOAD):
+                result = self._invoke_load_processors(
+                    POST_LOAD,
+                    result,
+                    many=many,
+                    original_data=data,
+                    partial=partial,
+                )
+
+        except ValidationError as err:
+            errors = err.normalized_messages()
+
         if errors:
             exc = ValidationError(errors, data=data, valid_data=result)
             self.handle_error(exc, data, many=many, partial=partial)

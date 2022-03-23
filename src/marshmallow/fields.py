@@ -342,6 +342,7 @@ class Field(FieldABC):
         value: typing.Any,
         attr: str | None = None,
         data: typing.Mapping[str, typing.Any] | None = None,
+        skip_validate: bool = False,
         **kwargs,
     ):
         """Deserialize ``value``.
@@ -362,7 +363,8 @@ class Field(FieldABC):
         if self.allow_none and value is None:
             return None
         output = self._deserialize(value, attr, data, **kwargs)
-        self._validate(output)
+        if not skip_validate:
+            self._validate(output)
         return output
 
     # Methods for concrete classes to override.
