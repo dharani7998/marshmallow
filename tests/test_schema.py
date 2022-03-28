@@ -84,7 +84,7 @@ def test_load_resets_errors():
 def test_load_validation_error_stores_input_data_and_valid_data():
     class MySchema(Schema):
         always_valid = fields.DateTime()
-        always_invalid = fields.Field(validate=[lambda v: False])
+        always_invalid = fields.Field(validate=[lambda v, **kwargs: False])
 
     schema = MySchema()
     input_data = {
@@ -128,7 +128,7 @@ def test_errored_fields_do_not_appear_in_output():
             raise ValidationError("oops")
 
     class MySchema(Schema):
-        foo = MyField(validate=lambda x: False)
+        foo = MyField(validate=lambda x, **kwargs: False)
 
     sch = MySchema()
     with pytest.raises(ValidationError) as excinfo:
@@ -174,8 +174,8 @@ def test_boolean_can_dump_unhashable(value):
 
 def test_multiple_errors_can_be_stored_for_a_given_index():
     class MySchema(Schema):
-        foo = fields.Str(validate=lambda x: len(x) > 3)
-        bar = fields.Int(validate=lambda x: x > 3)
+        foo = fields.Str(validate=lambda x, **kwargs: len(x) > 3)
+        bar = fields.Int(validate=lambda x, **kwargs: x > 3)
 
     sch = MySchema()
     valid = {"foo": "loll", "bar": 42}
@@ -1872,7 +1872,7 @@ class MySchema(Schema):
 
 class TestFieldValidation:
     def test_errors_are_cleared_after_loading_collection(self):
-        def always_fail(val):
+        def always_fail(val, **kwargs):
             raise ValidationError("lol")
 
         class MySchema(Schema):
@@ -1890,7 +1890,7 @@ class TestFieldValidation:
         assert len(errors["foo"]) == 1
 
     def test_raises_error_with_list(self):
-        def validator(val):
+        def validator(val, **kwargs):
             raise ValidationError(["err1", "err2"])
 
         class MySchema(Schema):
@@ -1902,7 +1902,7 @@ class TestFieldValidation:
 
     # https://github.com/marshmallow-code/marshmallow/issues/110
     def test_raises_error_with_dict(self):
-        def validator(val):
+        def validator(val, **kwargs):
             raise ValidationError({"code": "invalid_foo"})
 
         class MySchema(Schema):
@@ -2416,7 +2416,7 @@ def test_deserialization_with_required_field_and_custom_validator():
     class ValidatingSchema(Schema):
         color = fields.String(
             required=True,
-            validate=lambda x: x.lower() == "red" or x.lower() == "blue",
+            validate=lambda x, **kwargs: x.lower() == "red" or x.lower() == "blue",
             error_messages={"validator_failed": "Color must be red or blue"},
         )
 

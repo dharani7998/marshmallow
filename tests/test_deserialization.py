@@ -1175,7 +1175,7 @@ class TestFieldDeserialization:
         assert sch.load({"foo": 24})["foo"] == 42
 
     def test_field_deserialization_with_user_validator_function(self):
-        field = fields.String(validate=lambda s: s.lower() == "valid")
+        field = fields.String(validate=lambda s, **kwargs: s.lower() == "valid")
         assert field.deserialize("Valid") == "Valid"
         with pytest.raises(ValidationError) as excinfo:
             field.deserialize("invalid")
@@ -1184,7 +1184,7 @@ class TestFieldDeserialization:
 
     def test_field_deserialization_with_user_validator_class_that_returns_bool(self):
         class MyValidator:
-            def __call__(self, val):
+            def __call__(self, val, **kwargs):
                 if val == "valid":
                     return True
                 return False
@@ -1197,7 +1197,7 @@ class TestFieldDeserialization:
     def test_field_deserialization_with_user_validator_that_raises_error_with_list(
         self,
     ):
-        def validator(val):
+        def validator(val, **kwargs):
             raise ValidationError(["err1", "err2"])
 
         class MySchema(Schema):
@@ -1208,15 +1208,15 @@ class TestFieldDeserialization:
 
     def test_validator_must_return_false_to_raise_error(self):
         # validator returns None, so anything validates
-        field = fields.String(validate=lambda s: None)
+        field = fields.String(validate=lambda s, **kwargs: None)
         assert field.deserialize("Valid") == "Valid"
         # validator returns False, so nothing validates
-        field2 = fields.String(validate=lambda s: False)
+        field2 = fields.String(validate=lambda s, **kwargs: False)
         with pytest.raises(ValidationError):
             field2.deserialize("invalid")
 
     def test_field_deserialization_with_validator_with_nonascii_input(self):
-        field = fields.String(validate=lambda s: False)
+        field = fields.String(validate=lambda s, **kwargs: False)
         with pytest.raises(ValidationError) as excinfo:
             field.deserialize("привет")
         assert type(excinfo.value) == ValidationError
@@ -1225,22 +1225,22 @@ class TestFieldDeserialization:
         validators_gen = (
             func
             for func in (
-                lambda s: s.lower() == "valid",
-                lambda s: s.lower()[::-1] == "dilav",
+                lambda s, **kwargs: s.lower() == "valid",
+                lambda s, **kwargs: s.lower()[::-1] == "dilav",
             )
         )
 
         m_colletion_type = [
             fields.String(
                 validate=[
-                    lambda s: s.lower() == "valid",
-                    lambda s: s.lower()[::-1] == "dilav",
+                    lambda s, **kwargs: s.lower() == "valid",
+                    lambda s, **kwargs: s.lower()[::-1] == "dilav",
                 ]
             ),
             fields.String(
                 validate=(
-                    lambda s: s.lower() == "valid",
-                    lambda s: s.lower()[::-1] == "dilav",
+                    lambda s, **kwargs: s.lower() == "valid",
+                    lambda s, **kwargs: s.lower()[::-1] == "dilav",
                 )
             ),
             fields.String(validate=validators_gen),
@@ -1253,7 +1253,7 @@ class TestFieldDeserialization:
 
     def test_field_deserialization_with_custom_error_message(self):
         field = fields.String(
-            validate=lambda s: s.lower() == "valid",
+            validate=lambda s, **kwargs: s.lower() == "valid",
             error_messages={"validator_failed": "Bad value."},
         )
         with pytest.raises(ValidationError, match="Bad value."):
@@ -1269,13 +1269,15 @@ class SimpleUserSchema(Schema):
 class Validator(Schema):
     email = fields.Email()
     colors = fields.Str(validate=validate.OneOf(["red", "blue"]))
-    age = fields.Integer(validate=lambda n: n > 0)
+    age = fields.Integer(validate=lambda n, **kwargs: n > 0)
 
 
 class Validators(Schema):
     email = fields.Email()
     colors = fields.Str(validate=validate.OneOf(["red", "blue"]))
-    age = fields.Integer(validate=[lambda n: n > 0, lambda n: n < 100])
+    age = fields.Integer(
+        validate=[lambda n, **kwargs: n > 0, lambda n, **kwargs: n < 100]
+    )
 
 
 class TestSchemaDeserialization:
@@ -1572,7 +1574,7 @@ class TestSchemaDeserialization:
             v.load(bad_data)
 
     def test_validation_errors_are_stored(self):
-        def validate_field(val):
+        def validate_field(val, **kwargs):
             raise ValidationError("Something went wrong")
 
         class MySchema(Schema):
@@ -1584,10 +1586,10 @@ class TestSchemaDeserialization:
         assert "Something went wrong" in errors["foo"]
 
     def test_multiple_errors_can_be_stored_for_a_field(self):
-        def validate_with_bool(n):
+        def validate_with_bool(n, **kwargs):
             return False
 
-        def validate_with_error(n):
+        def validate_with_error(n, **kwargs):
             raise ValidationError("foo is not valid")
 
         class MySchema(Schema):
@@ -1603,7 +1605,7 @@ class TestSchemaDeserialization:
         assert len(errors["foo"]) == 2
 
     def test_multiple_errors_can_be_stored_for_an_email_field(self):
-        def validate_with_bool(val):
+        def validate_with_bool(val, **kwargs):
             return False
 
         class MySchema(Schema):
@@ -1616,7 +1618,7 @@ class TestSchemaDeserialization:
         assert "Not a valid email address." in errors["email"][0]
 
     def test_multiple_errors_can_be_stored_for_a_url_field(self):
-        def validate_with_bool(val):
+        def validate_with_bool(val, **kwargs):
             return False
 
         class MySchema(Schema):
@@ -1630,7 +1632,7 @@ class TestSchemaDeserialization:
 
     def test_required_value_only_passed_to_validators_if_provided(self):
         class MySchema(Schema):
-            foo = fields.Field(required=True, validate=lambda f: False)
+            foo = fields.Field(required=True, validate=lambda f, **kwargs: False)
 
         with pytest.raises(ValidationError) as excinfo:
             MySchema().load({})
@@ -1830,18 +1832,26 @@ class TestSchemaDeserialization:
         assert data == {"foo": "hi", "bar": "okay", "alpha.beta": "woah!"}
 
 
-validators_gen = (func for func in [lambda x: x <= 24, lambda x: 18 <= x])
+validators_gen = (
+    func for func in [lambda x, **kwargs: x <= 24, lambda x, **kwargs: 18 <= x]
+)
 
-validators_gen_float = (func for func in [lambda f: f <= 4.1, lambda f: f >= 1.0])
+validators_gen_float = (
+    func for func in [lambda f, **kwargs: f <= 4.1, lambda f, **kwargs: f >= 1.0]
+)
 
 validators_gen_str = (
-    func for func in [lambda n: len(n) == 3, lambda n: n[1].lower() == "o"]
+    func
+    for func in [
+        lambda n, **kwargs: len(n) == 3,
+        lambda n, **kwargs: n[1].lower() == "o",
+    ]
 )
 
 
 class TestValidation:
     def test_integer_with_validator(self):
-        field = fields.Integer(validate=lambda x: 18 <= x <= 24)
+        field = fields.Integer(validate=lambda x, **kwargs: 18 <= x <= 24)
         out = field.deserialize("20")
         assert out == 20
         with pytest.raises(ValidationError):
@@ -1850,8 +1860,12 @@ class TestValidation:
     @pytest.mark.parametrize(
         "field",
         [
-            fields.Integer(validate=[lambda x: x <= 24, lambda x: 18 <= x]),
-            fields.Integer(validate=(lambda x: x <= 24, lambda x: 18 <= x)),
+            fields.Integer(
+                validate=[lambda x, **kwargs: x <= 24, lambda x, **kwargs: 18 <= x]
+            ),
+            fields.Integer(
+                validate=(lambda x, **kwargs: x <= 24, lambda x, **kwargs: 18 <= x)
+            ),
             fields.Integer(validate=validators_gen),
         ],
     )
@@ -1864,8 +1878,12 @@ class TestValidation:
     @pytest.mark.parametrize(
         "field",
         [
-            fields.Float(validate=[lambda f: f <= 4.1, lambda f: f >= 1.0]),
-            fields.Float(validate=(lambda f: f <= 4.1, lambda f: f >= 1.0)),
+            fields.Float(
+                validate=[lambda f, **kwargs: f <= 4.1, lambda f, **kwargs: f >= 1.0]
+            ),
+            fields.Float(
+                validate=(lambda f, **kwargs: f <= 4.1, lambda f, **kwargs: f >= 1.0)
+            ),
             fields.Float(validate=validators_gen_float),
         ],
     )
@@ -1875,14 +1893,14 @@ class TestValidation:
             field.deserialize(4.2)
 
     def test_string_validator(self):
-        field = fields.String(validate=lambda n: len(n) == 3)
+        field = fields.String(validate=lambda n, **kwargs: len(n) == 3)
         assert field.deserialize("Joe") == "Joe"
         with pytest.raises(ValidationError):
             field.deserialize("joseph")
 
     def test_function_validator(self):
         field = fields.Function(
-            lambda d: d.name.upper(), validate=lambda n: len(n) == 3
+            lambda d: d.name.upper(), validate=lambda n, **kwargs: len(n) == 3
         )
         assert field.deserialize("joe")
         with pytest.raises(ValidationError):
@@ -1893,11 +1911,17 @@ class TestValidation:
         [
             fields.Function(
                 lambda d: d.name.upper(),
-                validate=[lambda n: len(n) == 3, lambda n: n[1].lower() == "o"],
+                validate=[
+                    lambda n, **kwargs: len(n) == 3,
+                    lambda n, **kwargs: n[1].lower() == "o",
+                ],
             ),
             fields.Function(
                 lambda d: d.name.upper(),
-                validate=(lambda n: len(n) == 3, lambda n: n[1].lower() == "o"),
+                validate=(
+                    lambda n, **kwargs: len(n) == 3,
+                    lambda n, **kwargs: n[1].lower() == "o",
+                ),
             ),
             fields.Function(lambda d: d.name.upper(), validate=validators_gen_str),
         ],
@@ -1910,7 +1934,9 @@ class TestValidation:
     def test_method_validator(self):
         class MethodSerializer(Schema):
             name = fields.Method(
-                "get_name", deserialize="get_name", validate=lambda n: len(n) == 3
+                "get_name",
+                deserialize="get_name",
+                validate=lambda n, **kwargs: len(n) == 3,
             )
 
             def get_name(self, val):
@@ -1924,7 +1950,7 @@ class TestValidation:
     def test_nested_data_is_stored_when_validation_fails(self):
         class SchemaA(Schema):
             x = fields.Integer()
-            y = fields.Integer(validate=lambda n: n > 0)
+            y = fields.Integer(validate=lambda n, **kwargs: n > 0)
             z = fields.Integer()
 
         class SchemaB(Schema):
@@ -1947,7 +1973,7 @@ class TestValidation:
 
     def test_false_value_validation(self):
         class Sch(Schema):
-            lamb = fields.Raw(validate=lambda x: x is False)
+            lamb = fields.Raw(validate=lambda x, **kwargs: x is False)
             equal = fields.Raw(validate=Equal(False))
 
         errors = Sch().validate({"lamb": False, "equal": False})

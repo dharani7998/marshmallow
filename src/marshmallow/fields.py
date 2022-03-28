@@ -259,11 +259,11 @@ class Field(FieldABC):
         check_key = attr if self.attribute is None else self.attribute
         return accessor_func(obj, check_key, default)
 
-    def _validate(self, value):
+    def _validate(self, value, **kwargs):
         """Perform validation on ``value``. Raise a :exc:`ValidationError` if validation
         does not succeed.
         """
-        self._validate_all(value)
+        self._validate_all(value, **kwargs)
 
     @property
     def _validate_all(self):
@@ -362,7 +362,7 @@ class Field(FieldABC):
         if self.allow_none and value is None:
             return None
         output = self._deserialize(value, attr, data, **kwargs)
-        self._validate(output)
+        self._validate(output, data=data, data_store=self.context)
         return output
 
     # Methods for concrete classes to override.
@@ -429,7 +429,7 @@ class Field(FieldABC):
     @property
     def context(self):
         """The context dictionary for the parent :class:`Schema`."""
-        return self.parent.context
+        return self.parent.context if self.parent else {}
 
     # the default and missing properties are provided for compatibility and
     # emit warnings when they are accessed and set

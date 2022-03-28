@@ -350,8 +350,8 @@ class TestValidatesDecorator:
 
     def test_precedence(self):
         class Schema2(ValidatesSchema):
-            foo = fields.Int(validate=lambda n: n != 42)
-            bar = fields.Int(validate=lambda n: n == 1)
+            foo = fields.Int(validate=lambda n, **kwargs: n != 42)
+            bar = fields.Int(validate=lambda n, **kwargs: n == 1)
 
             @validates("bar")
             def validate_bar(self, value):
@@ -648,7 +648,7 @@ class TestValidatesSchemaDecorator:
 
     def test_skip_on_field_errors(self):
         class MySchema(Schema):
-            foo = fields.Int(required=True, validate=lambda n: n == 3)
+            foo = fields.Int(required=True, validate=lambda n, **kwargs: n == 3)
             bar = fields.Int(required=True)
 
             @validates_schema(skip_on_field_errors=True)
