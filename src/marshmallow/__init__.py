@@ -14,7 +14,11 @@ from marshmallow.decorators import (
     validates_schema,
 )
 from marshmallow.exceptions import ValidationError
-from marshmallow.schema import Schema, SchemaOpts
+from marshmallow.schema import (
+    CONTEXT,
+    Schema,
+    SchemaOpts,
+)
 from marshmallow.utils import EXCLUDE, INCLUDE, RAISE, missing
 
 from . import fields
@@ -63,6 +67,7 @@ def __getattr__(name: str) -> typing.Any:
 
 
 __all__ = [
+    "CONTEXT",
     "EXCLUDE",
     "INCLUDE",
     "RAISE",

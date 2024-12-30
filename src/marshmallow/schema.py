@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import copy
 import datetime as dt
 import decimal
@@ -37,6 +39,19 @@ from marshmallow.utils import (
     set_value,
     validate_unknown_parameter_value,
 )
+
+CONTEXT = contextvars.ContextVar("context", default=None)
+
+
+class Context(contextlib.AbstractContextManager):
+    def __init__(self, context):
+        self.context = context
+
+    def __enter__(self):
+        self.token = CONTEXT.set(self.context)
+
+    def __exit__(self, *args, **kwargs):
+        CONTEXT.reset(self.token)
 
 
 def _get_fields(attrs):
@@ -501,13 +516,16 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
             ret[key] = value
         return ret
 
-    def dump(self, obj: typing.Any, *, many: bool | None = None):
+    def dump(
+        self, obj: typing.Any, *, many: bool | None = None, context: typing.Any = None
+    ):
         """Serialize an object to native Python data types according to this
         Schema's fields.
 
         :param obj: The object to serialize.
         :param many: Whether to serialize `obj` as a collection. If `None`, the value
             for `self.many` is used.
+        :param context: Optional context used when serializing.
         :return: Serialized data
 
         .. versionadded:: 1.0.0
@@ -518,20 +536,21 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         .. versionchanged:: 3.0.0rc9
             Validation no longer occurs upon serialization.
         """
-        many = self.many if many is None else bool(many)
-        if self._hooks[PRE_DUMP]:
-            processed_obj = self._invoke_dump_processors(
-                PRE_DUMP, obj, many=many, original_data=obj
-            )
-        else:
-            processed_obj = obj
+        with Context(context) if context is not None else contextlib.nullcontext():
+            many = self.many if many is None else bool(many)
+            if self._hooks[PRE_DUMP]:
+                processed_obj = self._invoke_dump_processors(
+                    PRE_DUMP, obj, many=many, original_data=obj
+                )
+            else:
+                processed_obj = obj
 
-        result = self._serialize(processed_obj, many=many)
+            result = self._serialize(processed_obj, many=many)
 
-        if self._hooks[POST_DUMP]:
-            result = self._invoke_dump_processors(
-                POST_DUMP, result, many=many, original_data=obj
-            )
+            if self._hooks[POST_DUMP]:
+                result = self._invoke_dump_processors(
+                    POST_DUMP, result, many=many, original_data=obj
+                )
 
         return result
 
@@ -676,6 +695,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         many: bool | None = None,
         partial: bool | types.StrSequenceOrSet | None = None,
         unknown: str | None = None,
+        context: typing.Any = None,
     ):
         """Deserialize a data structure to an object defined by this Schema's fields.
 
@@ -689,6 +709,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         :param unknown: Whether to exclude, include, or raise an error for unknown
             fields in the data. Use `EXCLUDE`, `INCLUDE` or `RAISE`.
             If `None`, the value for `self.unknown` is used.
+        :param context: Optional context used when deserializing.
         :return: Deserialized data
 
         .. versionadded:: 1.0.0
@@ -697,9 +718,10 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
             A :exc:`ValidationError <marshmallow.exceptions.ValidationError>` is raised
             if invalid data are passed.
         """
-        return self._do_load(
-            data, many=many, partial=partial, unknown=unknown, postprocess=True
-        )
+        with Context(context) if context is not None else contextlib.nullcontext():
+            return self._do_load(
+                data, many=many, partial=partial, unknown=unknown, postprocess=True
+            )
 
     def loads(
         self,

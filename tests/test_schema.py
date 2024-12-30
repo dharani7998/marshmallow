@@ -7,6 +7,7 @@ import pytest
 import simplejson as json
 
 from marshmallow import (
+    CONTEXT,
     EXCLUDE,
     INCLUDE,
     RAISE,
@@ -2165,6 +2166,26 @@ class UserContextSchema(Schema):
 
 
 class TestContext:
+    def test_context_load_dump(self):
+        class ContextField(fields.Integer):
+            def _serialize(self, value, attr, obj, **kwargs):
+                value *= CONTEXT.get({}).get("factor", 1)
+                return super()._serialize(value, attr, obj, **kwargs)
+
+            def _deserialize(self, value, attr, data, **kwargs):
+                val = super()._deserialize(value, attr, data, **kwargs)
+                return val * CONTEXT.get({}).get("factor", 1)
+
+        class ContextSchema(Schema):
+            ctx_fld = ContextField()
+
+        ctx_schema = ContextSchema()
+
+        assert ctx_schema.load({"ctx_fld": 1}) == {"ctx_fld": 1}
+        assert ctx_schema.load({"ctx_fld": 1}, context={"factor": 2}) == {"ctx_fld": 2}
+        assert ctx_schema.dump({"ctx_fld": 1}) == {"ctx_fld": 1}
+        assert ctx_schema.dump({"ctx_fld": 1}, context={"factor": 2}) == {"ctx_fld": 2}
+
     def test_context_method(self):
         owner = User("Joe")
         blog = Blog(title="Joe Blog", user=owner)
