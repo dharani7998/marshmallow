@@ -11,7 +11,6 @@ import math
 import numbers
 import typing
 import uuid
-import warnings
 from collections.abc import Mapping as _Mapping
 from enum import Enum as EnumType
 
@@ -39,7 +38,6 @@ from marshmallow.utils import (
     missing as missing_,
 )
 from marshmallow.validate import And, Length
-from marshmallow.warnings import RemovedInMarshmallow4Warning
 
 if typing.TYPE_CHECKING:
     from marshmallow.schema import SchemaMeta
@@ -271,20 +269,6 @@ class Field(FieldABC):
             msg = msg.format(**kwargs)
         return ValidationError(msg)
 
-    def fail(self, key: str, **kwargs):
-        """Helper method that raises a `ValidationError` with an error message
-        from ``self.error_messages``.
-
-        .. deprecated:: 3.0.0
-            Use `make_error <marshmallow.fields.Field.make_error>` instead.
-        """
-        warnings.warn(
-            f'`Field.fail` is deprecated. Use `raise self.make_error("{key}", ...)` instead.',
-            RemovedInMarshmallow4Warning,
-            stacklevel=2,
-        )
-        raise self.make_error(key=key, **kwargs)
-
     def _validate_missing(self, value):
         """Validate missing values. Raise a :exc:`ValidationError` if
         `value` should be considered missing.
@@ -498,13 +482,6 @@ class Nested(Field):
             raise StringNotCollectionError(
                 '"exclude" should be a collection of strings.'
             )
-        if nested == "self":
-            warnings.warn(
-                "Passing 'self' to `Nested` is deprecated. "
-                "Use `Nested(lambda: MySchema(...))` instead.",
-                RemovedInMarshmallow4Warning,
-                stacklevel=2,
-            )
         self.nested = nested
         self.only = only
         self.exclude = exclude
@@ -556,8 +533,6 @@ class Nested(Field):
                         "`Nested` fields must be passed a "
                         f"`Schema`, not {nested.__class__}."
                     )
-                elif nested == "self":
-                    schema_class = self.root.__class__
                 else:
                     schema_class = class_registry.get_class(nested)
                 self._schema = schema_class(
@@ -635,8 +610,7 @@ class Pluck(Nested):
         loaded = AlbumSchema().load(in_data)  # => {'artist': {'id': 42}}
         dumped = AlbumSchema().dump(loaded)  # => {'artist': 42}
 
-    :param Schema nested: The Schema class or class name (string)
-        to nest, or ``"self"`` to nest the :class:`Schema` within itself.
+    :param Schema nested: The Schema class or class name (string) to nest
     :param str field_name: The key to pluck a value from.
     :param kwargs: The same keyword arguments that :class:`Nested` receives.
     """
