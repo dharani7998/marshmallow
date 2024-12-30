@@ -16,6 +16,7 @@ from marshmallow.decorators import (
 from marshmallow.exceptions import ValidationError
 from marshmallow.schema import (
     CONTEXT,
+    Context,
     Schema,
     SchemaOpts,
 )
@@ -71,6 +72,7 @@ __all__ = [
     "EXCLUDE",
     "INCLUDE",
     "RAISE",
+    "Context",
     "Schema",
     "SchemaOpts",
     "fields",

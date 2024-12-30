@@ -11,6 +11,7 @@ from marshmallow import (
     EXCLUDE,
     INCLUDE,
     RAISE,
+    Context,
     Schema,
     class_registry,
     fields,
@@ -2185,6 +2186,15 @@ class TestContext:
         assert ctx_schema.load({"ctx_fld": 1}, context={"factor": 2}) == {"ctx_fld": 2}
         assert ctx_schema.dump({"ctx_fld": 1}) == {"ctx_fld": 1}
         assert ctx_schema.dump({"ctx_fld": 1}, context={"factor": 2}) == {"ctx_fld": 2}
+        with Context({"factor": 3}):
+            assert ctx_schema.load({"ctx_fld": 1}) == {"ctx_fld": 3}
+            assert ctx_schema.load({"ctx_fld": 1}, context={"factor": 4}) == {
+                "ctx_fld": 4
+            }
+            assert ctx_schema.dump({"ctx_fld": 1}) == {"ctx_fld": 3}
+            assert ctx_schema.dump({"ctx_fld": 1}, context={"factor": 4}) == {
+                "ctx_fld": 4
+            }
 
     def test_context_method(self):
         owner = User("Joe")
