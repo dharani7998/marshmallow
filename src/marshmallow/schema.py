@@ -263,8 +263,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         delimiters.
     :param many: Should be set to `True` if ``obj`` is a collection
         so that the object will be serialized to a list.
-    :param context: Optional context passed to :class:`fields.Method` and
-        :class:`fields.Function` fields.
     :param load_only: Fields to skip during serialization (write-only fields)
     :param dump_only: Fields to skip during deserialization (read-only fields)
     :param partial: Whether to ignore missing fields and not require
@@ -361,7 +359,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         only: types.StrSequenceOrSet | None = None,
         exclude: types.StrSequenceOrSet = (),
         many: bool | None = None,
-        context: dict | None = None,
         load_only: types.StrSequenceOrSet = (),
         dump_only: types.StrSequenceOrSet = (),
         partial: bool | types.StrSequenceOrSet | None = None,
@@ -388,7 +385,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
             if unknown is None
             else validate_unknown_parameter_value(unknown)
         )
-        self.context = context or {}
         self._normalize_nested_options()
         #: Dictionary mapping field_names -> :class:`Field` objects
         self.fields = {}  # type: dict[str, ma_fields.Field]

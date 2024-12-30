@@ -395,13 +395,6 @@ class Field(FieldABC):
         """
         return value
 
-    # Properties
-
-    @property
-    def context(self):
-        """The context dictionary for the parent :class:`Schema`."""
-        return self.parent.context
-
 
 class Raw(Field):
     """Field that applies no formatting."""
@@ -498,8 +491,6 @@ class Nested(Field):
             Renamed from `serializer` to `schema`.
         """
         if not self._schema:
-            # Inherit context from parent.
-            context = getattr(self.parent, "context", {})
             if callable(self.nested) and not isinstance(self.nested, type):
                 nested = self.nested()
             else:
@@ -512,7 +503,6 @@ class Nested(Field):
 
             if isinstance(nested, SchemaABC):
                 self._schema = copy.copy(nested)
-                self._schema.context.update(context)
                 # Respect only and exclude passed from parent and re-initialize fields
                 set_class = self._schema.set_class
                 if self.only is not None:
@@ -539,7 +529,6 @@ class Nested(Field):
                     many=self.many,
                     only=self.only,
                     exclude=self.exclude,
-                    context=context,
                     load_only=self._nested_normalized_option("load_only"),
                     dump_only=self._nested_normalized_option("dump_only"),
                 )
@@ -1909,14 +1898,12 @@ class Function(Field):
 
     :param serialize: A callable from which to retrieve the value.
         The function must take a single argument ``obj`` which is the object
-        to be serialized. It can also optionally take a ``context`` argument,
-        which is a dictionary of context variables passed to the serializer.
+        to be serialized.
         If no callable is provided then the ```load_only``` flag will be set
         to True.
     :param deserialize: A callable from which to retrieve the value.
         The function must take a single argument ``value`` which is the value
-        to be deserialized. It can also optionally take a ``context`` argument,
-        which is a dictionary of context variables passed to the deserializer.
+        to be deserialized.
         If no callable is provided then ```value``` will be passed through
         unchanged.
 
@@ -1951,20 +1938,12 @@ class Function(Field):
         self.deserialize_func = deserialize and utils.callable_or_raise(deserialize)
 
     def _serialize(self, value, attr, obj, **kwargs):
-        return self._call_or_raise(self.serialize_func, obj, attr)
+        return self.serialize_func(obj)
 
     def _deserialize(self, value, attr, data, **kwargs):
         if self.deserialize_func:
-            return self._call_or_raise(self.deserialize_func, value, attr)
+            return self.deserialize_func(value)
         return value
-
-    def _call_or_raise(self, func, value, attr):
-        if len(utils.get_func_args(func)) > 1:
-            if self.parent.context is None:
-                msg = f"No context available for Function field {attr!r}"
-                raise ValidationError(msg)
-            return func(value, self.parent.context)
-        return func(value)
 
 
 class Constant(Field):

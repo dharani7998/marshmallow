@@ -1,6 +1,7 @@
 import datetime as dt
 import math
 import random
+import typing
 from collections import OrderedDict, namedtuple
 
 import pytest
@@ -355,15 +356,13 @@ def test_nested_on_bind_field_hook():
             bar = fields.Str()
 
             def on_bind_field(self, field_name, field_obj):
-                field_obj.metadata["fname"] = self.context["fname"]
+                assert field_obj.parent is self
+                field_obj.metadata["fname"] = field_name
 
         foo = fields.Nested(NestedSchema)
 
-    schema1 = MySchema(context={"fname": "foobar"})
-    schema2 = MySchema(context={"fname": "quxquux"})
-
-    assert schema1.fields["foo"].schema.fields["bar"].metadata["fname"] == "foobar"
-    assert schema2.fields["foo"].schema.fields["bar"].metadata["fname"] == "quxquux"
+    schema = MySchema()
+    assert schema.fields["foo"].schema.fields["bar"].metadata["fname"] == "bar"
 
 
 class TestValidate:
@@ -2160,10 +2159,12 @@ def test_deserialization_with_required_field_and_custom_validator():
 
 class UserContextSchema(Schema):
     is_owner = fields.Method("get_is_owner")
-    is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
+    is_collab = fields.Function(
+        lambda user: user in typing.cast(dict, CONTEXT.get())["blog"]
+    )
 
     def get_is_owner(self, user):
-        return self.context["blog"].user.name == user.name
+        return CONTEXT.get()["blog"].user.name == user.name
 
 
 class TestContext:
@@ -2199,41 +2200,26 @@ class TestContext:
     def test_context_method(self):
         owner = User("Joe")
         blog = Blog(title="Joe Blog", user=owner)
-        context = {"blog": blog}
         serializer = UserContextSchema()
-        serializer.context = context
-        data = serializer.dump(owner)
-        assert data["is_owner"] is True
-        nonowner = User("Fred")
-        data = serializer.dump(nonowner)
-        assert data["is_owner"] is False
+        with Context({"blog": blog}):
+            data = serializer.dump(owner)
+            assert data["is_owner"] is True
+            nonowner = User("Fred")
+            data = serializer.dump(nonowner)
+            assert data["is_owner"] is False
 
     def test_context_method_function(self):
         owner = User("Fred")
         blog = Blog("Killer Queen", user=owner)
         collab = User("Brian")
         blog.collaborators.append(collab)
-        context = {"blog": blog}
-        serializer = UserContextSchema()
-        serializer.context = context
-        data = serializer.dump(collab)
-        assert data["is_collab"] is True
-        noncollab = User("Foo")
-        data = serializer.dump(noncollab)
-        assert data["is_collab"] is False
-
-    def test_function_field_raises_error_when_context_not_available(self):
-        # only has a function field
-        class UserFunctionContextSchema(Schema):
-            is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
-
-        owner = User("Joe")
-        serializer = UserFunctionContextSchema()
-        # no context
-        serializer.context = None
-        msg = "No context available for Function field {!r}".format("is_collab")
-        with pytest.raises(ValidationError, match=msg):
-            serializer.dump(owner)
+        with Context({"blog": blog}):
+            serializer = UserContextSchema()
+            data = serializer.dump(collab)
+            assert data["is_collab"] is True
+            noncollab = User("Foo")
+            data = serializer.dump(noncollab)
+            assert data["is_collab"] is False
 
     def test_function_field_handles_bound_serializer(self):
         class SerializeA:
@@ -2248,32 +2234,21 @@ class TestContext:
 
         owner = User("Joe")
         serializer = UserFunctionContextSchema()
-        # no context
-        serializer.context = None
         data = serializer.dump(owner)
         assert data["is_collab"] == "value"
 
-    def test_fields_context(self):
-        class CSchema(Schema):
-            name = fields.String()
-
-        ser = CSchema()
-        ser.context["foo"] = 42
-
-        assert ser.fields["name"].context == {"foo": 42}
-
     def test_nested_fields_inherit_context(self):
         class InnerSchema(Schema):
-            likes_bikes = fields.Function(lambda obj, ctx: "bikes" in ctx["info"])
+            likes_bikes = fields.Function(lambda obj: "bikes" in CONTEXT.get()["info"])
 
         class CSchema(Schema):
             inner = fields.Nested(InnerSchema)
 
         ser = CSchema()
-        ser.context["info"] = "i like bikes"
-        obj = {"inner": {}}
-        result = ser.dump(obj)
-        assert result["inner"]["likes_bikes"] is True
+        with Context({"info": "i like bikes"}):
+            obj = {"inner": {}}
+            result = ser.dump(obj)
+            assert result["inner"]["likes_bikes"] is True
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/820
     def test_nested_list_fields_inherit_context(self):
@@ -2282,19 +2257,17 @@ class TestContext:
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in self.context:
+                if "foo_context" not in CONTEXT.get():
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):
             bars = fields.List(fields.Nested(InnerSchema()))
 
         inner = InnerSchema()
-        inner.context["foo_context"] = "foo"
-        assert inner.load({"foo": 42})
+        assert inner.load({"foo": 42}, context={"foo_context": "foo"})
 
         outer = OuterSchema()
-        outer.context["foo_context"] = "foo"
-        assert outer.load({"bars": [{"foo": 42}]})
+        assert outer.load({"bars": [{"foo": 42}]}, context={"foo_context": "foo"})
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/820
     def test_nested_dict_fields_inherit_context(self):
@@ -2303,19 +2276,19 @@ class TestContext:
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in self.context:
+                if "foo_context" not in CONTEXT.get():
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):
             bars = fields.Dict(values=fields.Nested(InnerSchema()))
 
         inner = InnerSchema()
-        inner.context["foo_context"] = "foo"
-        assert inner.load({"foo": 42})
+        assert inner.load({"foo": 42}, context={"foo_context": "foo"})
 
         outer = OuterSchema()
-        outer.context["foo_context"] = "foo"
-        assert outer.load({"bars": {"test": {"foo": 42}}})
+        assert outer.load(
+            {"bars": {"test": {"foo": 42}}}, context={"foo_context": "foo"}
+        )
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/1404
     def test_nested_field_with_unpicklable_object_in_context(self):
@@ -2327,11 +2300,11 @@ class TestContext:
             foo = fields.Field()
 
         class OuterSchema(Schema):
-            inner = fields.Nested(InnerSchema(context={"unp": Unpicklable()}))
+            inner = fields.Nested(InnerSchema())
 
         outer = OuterSchema()
         obj = {"inner": {"foo": 42}}
-        assert outer.dump(obj)
+        assert outer.dump(obj, context={"unp": Unpicklable()})
 
 
 def test_serializer_can_specify_nested_object_as_attribute(blog):
