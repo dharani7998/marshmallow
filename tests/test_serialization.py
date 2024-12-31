@@ -10,7 +10,7 @@ from collections import OrderedDict, namedtuple
 
 import pytest
 
-from marshmallow import CONTEXT, Context, Schema, fields
+from marshmallow import Context, Schema, fields
 from marshmallow import missing as missing_
 from tests.base import ALL_FIELDS, DateEnum, GenderEnum, HairColorEnum, User, central
 
@@ -108,7 +108,7 @@ class TestFieldSerialization:
             pass
 
         field = fields.Function(
-            serialize=lambda obj: obj.name.upper() + CONTEXT.get()["key"]
+            serialize=lambda obj, context: obj.name.upper() + context["key"]
         )
         field.parent = Parent()
         with Context({"key": "BAR"}):

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import contextlib
-import contextvars
 import copy
 import datetime as dt
 import decimal
@@ -17,6 +16,7 @@ from collections.abc import Mapping
 
 from marshmallow import base, class_registry, types
 from marshmallow import fields as ma_fields
+from marshmallow.context import CONTEXT, Context
 from marshmallow.decorators import (
     POST_DUMP,
     POST_LOAD,
@@ -39,19 +39,6 @@ from marshmallow.utils import (
     set_value,
     validate_unknown_parameter_value,
 )
-
-CONTEXT = contextvars.ContextVar("context", default=None)
-
-
-class Context(contextlib.AbstractContextManager):
-    def __init__(self, context):
-        self.context = context
-
-    def __enter__(self):
-        self.token = CONTEXT.set(self.context)
-
-    def __exit__(self, *args, **kwargs):
-        CONTEXT.reset(self.token)
 
 
 def _get_fields(attrs):
@@ -407,6 +394,10 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
             return OrderedDict
         else:
             return dict
+
+    @property
+    def context(self) -> typing.Any:
+        return CONTEXT.get()
 
     @classmethod
     def from_dict(

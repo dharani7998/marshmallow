@@ -1,14 +1,12 @@
 import datetime as dt
 import math
 import random
-import typing
 from collections import OrderedDict, namedtuple
 
 import pytest
 import simplejson as json
 
 from marshmallow import (
-    CONTEXT,
     EXCLUDE,
     INCLUDE,
     RAISE,
@@ -2159,24 +2157,35 @@ def test_deserialization_with_required_field_and_custom_validator():
 
 class UserContextSchema(Schema):
     is_owner = fields.Method("get_is_owner")
-    is_collab = fields.Function(
-        lambda user: user in typing.cast(dict, CONTEXT.get())["blog"]
-    )
+    is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
 
     def get_is_owner(self, user):
-        return CONTEXT.get()["blog"].user.name == user.name
+        return self.context["blog"].user.name == user.name
 
 
 class TestContext:
+    def test_field_schema_context_properties(self):
+        class CSchema(Schema):
+            name = fields.String()
+
+        ser = CSchema()
+
+        with Context({"foo": 42}):
+            assert ser.context == {"foo": 42}
+            assert ser.fields["name"].context == {"foo": 42}
+
     def test_context_load_dump(self):
         class ContextField(fields.Integer):
             def _serialize(self, value, attr, obj, **kwargs):
-                value *= CONTEXT.get({}).get("factor", 1)
+                if self.context is not None:
+                    value *= self.context["factor"]
                 return super()._serialize(value, attr, obj, **kwargs)
 
             def _deserialize(self, value, attr, data, **kwargs):
                 val = super()._deserialize(value, attr, data, **kwargs)
-                return val * CONTEXT.get({}).get("factor", 1)
+                if self.context is not None:
+                    val *= self.context["factor"]
+                return val
 
         class ContextSchema(Schema):
             ctx_fld = ContextField()
@@ -2221,6 +2230,17 @@ class TestContext:
             data = serializer.dump(noncollab)
             assert data["is_collab"] is False
 
+    def test_function_field_raises_error_when_context_not_available(self):
+        # only has a function field
+        class UserFunctionContextSchema(Schema):
+            is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
+
+        owner = User("Joe")
+        serializer = UserFunctionContextSchema()
+        msg = "No context available for Function field {!r}".format("is_collab")
+        with pytest.raises(ValidationError, match=msg):
+            serializer.dump(owner)
+
     def test_function_field_handles_bound_serializer(self):
         class SerializeA:
             def __call__(self, value):
@@ -2239,7 +2259,7 @@ class TestContext:
 
     def test_nested_fields_inherit_context(self):
         class InnerSchema(Schema):
-            likes_bikes = fields.Function(lambda obj: "bikes" in CONTEXT.get()["info"])
+            likes_bikes = fields.Function(lambda obj, ctx: "bikes" in ctx["info"])
 
         class CSchema(Schema):
             inner = fields.Nested(InnerSchema)
@@ -2257,7 +2277,7 @@ class TestContext:
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in CONTEXT.get():
+                if "foo_context" not in self.context:
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):
@@ -2276,7 +2296,7 @@ class TestContext:
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in CONTEXT.get():
+                if "foo_context" not in self.context:
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):

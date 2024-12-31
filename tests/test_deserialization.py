@@ -8,7 +8,6 @@ from unittest.mock import patch
 import pytest
 
 from marshmallow import (
-    CONTEXT,
     EXCLUDE,
     INCLUDE,
     RAISE,
@@ -1009,7 +1008,7 @@ class TestFieldDeserialization:
 
         field = fields.Function(
             lambda x: None,
-            deserialize=lambda val: val.upper() + CONTEXT.get()["key"],
+            deserialize=lambda val, context: val.upper() + context["key"],
         )
         field.parent = Parent()
         with Context({"key": "BAR"}):

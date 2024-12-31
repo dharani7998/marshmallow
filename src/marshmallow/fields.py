@@ -24,6 +24,7 @@ else:
 
 from marshmallow import class_registry, types, utils, validate
 from marshmallow.base import FieldABC, SchemaABC
+from marshmallow.context import CONTEXT
 from marshmallow.exceptions import (
     FieldInstanceResolutionError,
     StringNotCollectionError,
@@ -229,6 +230,10 @@ class Field(FieldABC):
 
     def __deepcopy__(self, memo):
         return copy.copy(self)
+
+    @property
+    def context(self) -> typing.Any:
+        return CONTEXT.get()
 
     def get_value(self, obj, attr, accessor=None, default=missing_):
         """Return the value for a given key from an object.
@@ -1898,12 +1903,14 @@ class Function(Field):
 
     :param serialize: A callable from which to retrieve the value.
         The function must take a single argument ``obj`` which is the object
-        to be serialized.
+        to be serialized. It can also optionally take a ``context`` argument,
+        which is a dictionary of context variables passed to the serializer.
         If no callable is provided then the ```load_only``` flag will be set
         to True.
     :param deserialize: A callable from which to retrieve the value.
         The function must take a single argument ``value`` which is the value
-        to be deserialized.
+        to be deserialized. It can also optionally take a ``context`` argument,
+        which is a dictionary of context variables passed to the deserializer.
         If no callable is provided then ```value``` will be passed through
         unchanged.
 
@@ -1938,12 +1945,20 @@ class Function(Field):
         self.deserialize_func = deserialize and utils.callable_or_raise(deserialize)
 
     def _serialize(self, value, attr, obj, **kwargs):
-        return self.serialize_func(obj)
+        return self._call_or_raise(self.serialize_func, obj, attr)
 
     def _deserialize(self, value, attr, data, **kwargs):
         if self.deserialize_func:
-            return self.deserialize_func(value)
+            return self._call_or_raise(self.deserialize_func, value, attr)
         return value
+
+    def _call_or_raise(self, func, value, attr):
+        if len(utils.get_func_args(func)) > 1:
+            if CONTEXT.get() is None:
+                msg = f"No context available for Function field {attr!r}"
+                raise ValidationError(msg)
+            return func(value, self.parent.context)
+        return func(value)
 
 
 class Constant(Field):
