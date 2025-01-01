@@ -17,5 +17,7 @@ class Context(contextlib.AbstractContextManager):
         self._current_context.reset(self.token)
 
     @classmethod
-    def get(cls):
+    def get(cls, default=...):
+        if default is not ...:
+            return cls._current_context.get(default)
         return cls._current_context.get()

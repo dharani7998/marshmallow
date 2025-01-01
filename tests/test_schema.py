@@ -2167,21 +2167,13 @@ class TestContext:
     def test_context_load_dump(self):
         class ContextField(fields.Integer):
             def _serialize(self, value, attr, obj, **kwargs):
-                try:
-                    context = Context.get()
-                except LookupError:
-                    pass
-                else:
+                if (context := Context.get(None)) is not None:
                     value *= context.get("factor", 1)
                 return super()._serialize(value, attr, obj, **kwargs)
 
             def _deserialize(self, value, attr, data, **kwargs):
                 val = super()._deserialize(value, attr, data, **kwargs)
-                try:
-                    context = Context.get()
-                except LookupError:
-                    pass
-                else:
+                if (context := Context.get(None)) is not None:
                     val *= context.get("factor", 1)
                 return val
 
