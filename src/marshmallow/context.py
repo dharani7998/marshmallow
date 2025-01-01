@@ -3,15 +3,21 @@
 import contextlib
 import contextvars
 
-CONTEXT = contextvars.ContextVar("context", default=None)
-
 
 class Context(contextlib.AbstractContextManager):
+    _current_context: contextvars.ContextVar = contextvars.ContextVar(
+        "context", default=None
+    )
+
     def __init__(self, context):
         self.context = context
 
     def __enter__(self):
-        self.token = CONTEXT.set(self.context)
+        self.token = self._current_context.set(self.context)
 
     def __exit__(self, *args, **kwargs):
-        CONTEXT.reset(self.token)
+        self._current_context.reset(self.token)
+
+    @classmethod
+    def get(cls):
+        return cls._current_context.get()

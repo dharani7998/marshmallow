@@ -2160,31 +2160,21 @@ class UserContextSchema(Schema):
     is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
 
     def get_is_owner(self, user):
-        return self.context["blog"].user.name == user.name
+        return Context.get()["blog"].user.name == user.name
 
 
 class TestContext:
-    def test_field_schema_context_properties(self):
-        class CSchema(Schema):
-            name = fields.String()
-
-        ser = CSchema()
-
-        with Context({"foo": 42}):
-            assert ser.context == {"foo": 42}
-            assert ser.fields["name"].context == {"foo": 42}
-
     def test_context_load_dump(self):
         class ContextField(fields.Integer):
             def _serialize(self, value, attr, obj, **kwargs):
-                if self.context is not None:
-                    value *= self.context["factor"]
+                if (context := Context.get()) is not None:
+                    value *= context.get("factor", 1)
                 return super()._serialize(value, attr, obj, **kwargs)
 
             def _deserialize(self, value, attr, data, **kwargs):
                 val = super()._deserialize(value, attr, data, **kwargs)
-                if self.context is not None:
-                    val *= self.context["factor"]
+                if (context := Context.get()) is not None:
+                    val *= context.get("factor", 1)
                 return val
 
         class ContextSchema(Schema):
@@ -2193,18 +2183,10 @@ class TestContext:
         ctx_schema = ContextSchema()
 
         assert ctx_schema.load({"ctx_fld": 1}) == {"ctx_fld": 1}
-        assert ctx_schema.load({"ctx_fld": 1}, context={"factor": 2}) == {"ctx_fld": 2}
         assert ctx_schema.dump({"ctx_fld": 1}) == {"ctx_fld": 1}
-        assert ctx_schema.dump({"ctx_fld": 1}, context={"factor": 2}) == {"ctx_fld": 2}
-        with Context({"factor": 3}):
-            assert ctx_schema.load({"ctx_fld": 1}) == {"ctx_fld": 3}
-            assert ctx_schema.load({"ctx_fld": 1}, context={"factor": 4}) == {
-                "ctx_fld": 4
-            }
-            assert ctx_schema.dump({"ctx_fld": 1}) == {"ctx_fld": 3}
-            assert ctx_schema.dump({"ctx_fld": 1}, context={"factor": 4}) == {
-                "ctx_fld": 4
-            }
+        with Context({"factor": 2}):
+            assert ctx_schema.load({"ctx_fld": 1}) == {"ctx_fld": 2}
+            assert ctx_schema.dump({"ctx_fld": 1}) == {"ctx_fld": 2}
 
     def test_context_method(self):
         owner = User("Joe")
@@ -2277,17 +2259,19 @@ class TestContext:
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in self.context:
+                if "foo_context" not in Context.get():
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):
             bars = fields.List(fields.Nested(InnerSchema()))
 
         inner = InnerSchema()
-        assert inner.load({"foo": 42}, context={"foo_context": "foo"})
+        with Context({"foo_context": "foo"}):
+            assert inner.load({"foo": 42})
 
         outer = OuterSchema()
-        assert outer.load({"bars": [{"foo": 42}]}, context={"foo_context": "foo"})
+        with Context({"foo_context": "foo"}):
+            assert outer.load({"bars": [{"foo": 42}]})
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/820
     def test_nested_dict_fields_inherit_context(self):
@@ -2296,19 +2280,19 @@ class TestContext:
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in self.context:
+                if "foo_context" not in Context.get():
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):
             bars = fields.Dict(values=fields.Nested(InnerSchema()))
 
         inner = InnerSchema()
-        assert inner.load({"foo": 42}, context={"foo_context": "foo"})
+        with Context({"foo_context": "foo"}):
+            assert inner.load({"foo": 42})
 
         outer = OuterSchema()
-        assert outer.load(
-            {"bars": {"test": {"foo": 42}}}, context={"foo_context": "foo"}
-        )
+        with Context({"foo_context": "foo"}):
+            assert outer.load({"bars": {"test": {"foo": 42}}})
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/1404
     def test_nested_field_with_unpicklable_object_in_context(self):
@@ -2324,7 +2308,8 @@ class TestContext:
 
         outer = OuterSchema()
         obj = {"inner": {"foo": 42}}
-        assert outer.dump(obj, context={"unp": Unpicklable()})
+        with Context({"unp": Unpicklable()}):
+            assert outer.dump(obj)
 
 
 def test_serializer_can_specify_nested_object_as_attribute(blog):

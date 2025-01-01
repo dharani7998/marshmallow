@@ -24,7 +24,7 @@ else:
 
 from marshmallow import class_registry, types, utils, validate
 from marshmallow.base import FieldABC, SchemaABC
-from marshmallow.context import CONTEXT
+from marshmallow.context import Context
 from marshmallow.exceptions import (
     FieldInstanceResolutionError,
     StringNotCollectionError,
@@ -230,10 +230,6 @@ class Field(FieldABC):
 
     def __deepcopy__(self, memo):
         return copy.copy(self)
-
-    @property
-    def context(self) -> typing.Any:
-        return CONTEXT.get()
 
     def get_value(self, obj, attr, accessor=None, default=missing_):
         """Return the value for a given key from an object.
@@ -1954,10 +1950,10 @@ class Function(Field):
 
     def _call_or_raise(self, func, value, attr):
         if len(utils.get_func_args(func)) > 1:
-            if CONTEXT.get() is None:
+            if (context := Context.get()) is None:
                 msg = f"No context available for Function field {attr!r}"
                 raise ValidationError(msg)
-            return func(value, self.parent.context)
+            return func(value, context)
         return func(value)
 
 
