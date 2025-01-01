@@ -38,6 +38,9 @@ As a consequence of this change:
 
 Thanks :user:`ddelange` for the PR.
 
+- The `ordered` class Meta option is removed  (:issue:`2146`). Field order is already preserved by default.
+  Set `Schema.dict_class` to `OrderedDict` to maintain the previous behavior.
+
 Previously-deprecated API have been removed, including:
 
 - `default` and `missing` parameters, which were replaced by `dump_default` and `load_default` in 3.13.0 (:pr:`1742`, :pr:`2700`).
