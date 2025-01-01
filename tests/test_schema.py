@@ -2157,7 +2157,7 @@ def test_deserialization_with_required_field_and_custom_validator():
 
 class UserContextSchema(Schema):
     is_owner = fields.Method("get_is_owner")
-    is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
+    is_collab = fields.Function(lambda user: user in Context.get()["blog"])
 
     def get_is_owner(self, user):
         return Context.get()["blog"].user.name == user.name
@@ -2230,7 +2230,7 @@ class TestContext:
 
     def test_nested_fields_inherit_context(self):
         class InnerSchema(Schema):
-            likes_bikes = fields.Function(lambda obj, ctx: "bikes" in ctx["info"])
+            likes_bikes = fields.Function(lambda obj: "bikes" in Context.get()["info"])
 
         class CSchema(Schema):
             inner = fields.Nested(InnerSchema)

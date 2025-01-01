@@ -1008,7 +1008,7 @@ class TestFieldDeserialization:
 
         field = fields.Function(
             lambda x: None,
-            deserialize=lambda val, context: val.upper() + context["key"],
+            deserialize=lambda val: val.upper() + Context.get()["key"],
         )
         field.parent = Parent()
         with Context({"key": "BAR"}):

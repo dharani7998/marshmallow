@@ -24,7 +24,6 @@ else:
 
 from marshmallow import class_registry, types, utils, validate
 from marshmallow.base import FieldABC, SchemaABC
-from marshmallow.context import Context
 from marshmallow.exceptions import (
     FieldInstanceResolutionError,
     StringNotCollectionError,
@@ -1899,14 +1898,12 @@ class Function(Field):
 
     :param serialize: A callable from which to retrieve the value.
         The function must take a single argument ``obj`` which is the object
-        to be serialized. It can also optionally take a ``context`` argument,
-        which is the value of the current context returned by Context.get().
+        to be serialized.
         If no callable is provided then the ```load_only``` flag will be set
         to True.
     :param deserialize: A callable from which to retrieve the value.
         The function must take a single argument ``value`` which is the value
-        to be deserialized. It can also optionally take a ``context`` argument,
-        which is the value of the current context returned by Context.get().
+        to be deserialized.
         If no callable is provided then ```value``` will be passed through
         unchanged.
 
@@ -1941,17 +1938,12 @@ class Function(Field):
         self.deserialize_func = deserialize and utils.callable_or_raise(deserialize)
 
     def _serialize(self, value, attr, obj, **kwargs):
-        return self._call_or_raise(self.serialize_func, obj, attr)
+        return self.serialize_func(obj)
 
     def _deserialize(self, value, attr, data, **kwargs):
         if self.deserialize_func:
-            return self._call_or_raise(self.deserialize_func, value, attr)
+            return self.deserialize_func(value)
         return value
-
-    def _call_or_raise(self, func, value, attr):
-        if len(utils.get_func_args(func)) > 1:
-            return func(value, Context.get())
-        return func(value)
 
 
 class Constant(Field):

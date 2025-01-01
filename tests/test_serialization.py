@@ -108,7 +108,7 @@ class TestFieldSerialization:
             pass
 
         field = fields.Function(
-            serialize=lambda obj, context: obj.name.upper() + context["key"]
+            serialize=lambda obj: obj.name.upper() + Context.get()["key"]
         )
         field.parent = Parent()
         with Context({"key": "BAR"}):
