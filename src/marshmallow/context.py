@@ -5,9 +5,7 @@ import contextvars
 
 
 class Context(contextlib.AbstractContextManager):
-    _current_context: contextvars.ContextVar = contextvars.ContextVar(
-        "context", default=None
-    )
+    _current_context: contextvars.ContextVar = contextvars.ContextVar("context")
 
     def __init__(self, context):
         self.context = context

@@ -1950,10 +1950,7 @@ class Function(Field):
 
     def _call_or_raise(self, func, value, attr):
         if len(utils.get_func_args(func)) > 1:
-            if (context := Context.get()) is None:
-                msg = f"No context available for Function field {attr!r}"
-                raise ValidationError(msg)
-            return func(value, context)
+            return func(value, Context.get())
         return func(value)
 
 

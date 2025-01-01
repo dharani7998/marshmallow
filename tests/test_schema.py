@@ -2167,13 +2167,21 @@ class TestContext:
     def test_context_load_dump(self):
         class ContextField(fields.Integer):
             def _serialize(self, value, attr, obj, **kwargs):
-                if (context := Context.get()) is not None:
+                try:
+                    context = Context.get()
+                except LookupError:
+                    pass
+                else:
                     value *= context.get("factor", 1)
                 return super()._serialize(value, attr, obj, **kwargs)
 
             def _deserialize(self, value, attr, data, **kwargs):
                 val = super()._deserialize(value, attr, data, **kwargs)
-                if (context := Context.get()) is not None:
+                try:
+                    context = Context.get()
+                except LookupError:
+                    pass
+                else:
                     val *= context.get("factor", 1)
                 return val
 
@@ -2211,17 +2219,6 @@ class TestContext:
             noncollab = User("Foo")
             data = serializer.dump(noncollab)
             assert data["is_collab"] is False
-
-    def test_function_field_raises_error_when_context_not_available(self):
-        # only has a function field
-        class UserFunctionContextSchema(Schema):
-            is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
-
-        owner = User("Joe")
-        serializer = UserFunctionContextSchema()
-        msg = "No context available for Function field {!r}".format("is_collab")
-        with pytest.raises(ValidationError, match=msg):
-            serializer.dump(owner)
 
     def test_function_field_handles_bound_serializer(self):
         class SerializeA:
