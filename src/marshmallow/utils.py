@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import datetime as dt
-import functools
 import inspect
 import typing
 from collections.abc import Mapping
@@ -240,21 +239,6 @@ def callable_or_raise(obj):
 
 def _signature(func: typing.Callable) -> list[str]:
     return list(inspect.signature(func).parameters.keys())
-
-
-def get_func_args(func: typing.Callable) -> list[str]:
-    """Given a callable, return a list of argument names. Handles
-    `functools.partial` objects and class-based callables.
-
-    .. versionchanged:: 3.0.0a1
-        Do not return bound arguments, eg. ``self``.
-    """
-    if inspect.isfunction(func) or inspect.ismethod(func):
-        return _signature(func)
-    if isinstance(func, functools.partial):
-        return _signature(func.func)
-    # Callable class
-    return _signature(func)
 
 
 def resolve_field_instance(cls_or_instance):

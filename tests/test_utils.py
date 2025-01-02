@@ -1,7 +1,6 @@
 import datetime as dt
 from collections import namedtuple
 from copy import copy, deepcopy
-from functools import partial
 
 import pytest
 
@@ -198,22 +197,6 @@ def test_from_timestamp_with_overflow_value():
     value = 9223372036854775
     with pytest.raises(ValueError):
         utils.from_timestamp(value)
-
-
-def test_get_func_args():
-    def f1(foo, bar):
-        pass
-
-    f2 = partial(f1, "baz")
-
-    class F3:
-        def __call__(self, foo, bar):
-            pass
-
-    f3 = F3()
-
-    for func in [f1, f2, f3]:
-        assert utils.get_func_args(func) == ["foo", "bar"]
 
 
 # Regression test for https://github.com/marshmallow-code/marshmallow/issues/540
