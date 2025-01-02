@@ -11,7 +11,6 @@ from marshmallow import (
     EXCLUDE,
     INCLUDE,
     RAISE,
-    Context,
     Schema,
     fields,
     validate,
@@ -1001,18 +1000,6 @@ class TestFieldDeserialization:
     def test_function_field_deserialization_with_callable(self):
         field = fields.Function(lambda x: None, deserialize=lambda val: val.upper())
         assert field.deserialize("foo") == "FOO"
-
-    def test_function_field_deserialization_with_context(self):
-        class Parent(Schema):
-            pass
-
-        field = fields.Function(
-            lambda x: None,
-            deserialize=lambda val: val.upper() + Context.get()["key"],
-        )
-        field.parent = Parent()
-        with Context({"key": "BAR"}):
-            assert field.deserialize("foo") == "FOOBAR"
 
     def test_function_field_passed_deserialize_only_is_load_only(self):
         field = fields.Function(deserialize=lambda val: val.upper())

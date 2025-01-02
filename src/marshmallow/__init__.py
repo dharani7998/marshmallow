@@ -5,7 +5,6 @@ import typing
 
 from packaging.version import Version
 
-from marshmallow.context import Context
 from marshmallow.decorators import (
     post_dump,
     post_load,
@@ -67,7 +66,6 @@ __all__ = [
     "EXCLUDE",
     "INCLUDE",
     "RAISE",
-    "Context",
     "Schema",
     "SchemaOpts",
     "fields",

@@ -10,7 +10,7 @@ from collections import OrderedDict, namedtuple
 
 import pytest
 
-from marshmallow import Context, Schema, fields
+from marshmallow import Schema, fields
 from marshmallow import missing as missing_
 from tests.base import ALL_FIELDS, DateEnum, GenderEnum, HairColorEnum, User, central
 
@@ -102,17 +102,6 @@ class TestFieldSerialization:
     def test_function_field_load_only(self):
         field = fields.Function(deserialize=lambda obj: None)
         assert field.load_only
-
-    def test_function_field_passed_serialize_with_context(self, user, monkeypatch):
-        class Parent(Schema):
-            pass
-
-        field = fields.Function(
-            serialize=lambda obj: obj.name.upper() + Context.get()["key"]
-        )
-        field.parent = Parent()
-        with Context({"key": "BAR"}):
-            assert "FOOBAR" == field.serialize("key", user)
 
     def test_function_field_passed_uncallable_object(self):
         with pytest.raises(TypeError):
