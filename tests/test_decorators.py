@@ -11,9 +11,11 @@ from marshmallow import (
     post_load,
     pre_dump,
     pre_load,
+    validate,
     validates,
     validates_schema,
 )
+from tests.base import predicate
 
 
 @pytest.mark.parametrize("partial_val", (True, False))
@@ -333,8 +335,8 @@ class TestValidatesDecorator:
 
     def test_precedence(self):
         class Schema2(ValidatesSchema):
-            foo = fields.Int(validate=lambda n: n != 42)
-            bar = fields.Int(validate=lambda n: n == 1)
+            foo = fields.Int(validate=predicate(lambda n: n != 42))
+            bar = fields.Int(validate=validate.Equal(1))
 
             @validates("bar")
             def validate_bar(self, value):
@@ -351,7 +353,7 @@ class TestValidatesDecorator:
         errors = schema.validate({"bar": 3})
         assert "bar" in errors
         assert len(errors["bar"]) == 1
-        assert "Invalid value." in errors["bar"][0]
+        assert "Must be equal to 1." in errors["bar"][0]
 
         errors = schema.validate({"bar": 1})
         assert "bar" in errors
@@ -631,7 +633,7 @@ class TestValidatesSchemaDecorator:
 
     def test_skip_on_field_errors(self):
         class MySchema(Schema):
-            foo = fields.Int(required=True, validate=lambda n: n == 3)
+            foo = fields.Int(required=True, validate=validate.Equal(3))
             bar = fields.Int(required=True)
 
             @validates_schema(skip_on_field_errors=True)
