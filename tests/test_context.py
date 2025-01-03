@@ -1,6 +1,17 @@
 import typing
 
-from marshmallow import Schema, fields, validates
+import pytest
+
+from marshmallow import (
+    Schema,
+    fields,
+    post_dump,
+    post_load,
+    pre_dump,
+    pre_load,
+    validates,
+    validates_schema,
+)
 from marshmallow.exceptions import ValidationError
 from marshmallow.experimental.context import Context
 from tests.base import Blog, User
@@ -175,3 +186,64 @@ class TestContext:
         field.parent = Parent()
         with Context({"key": "BAR"}):
             assert field.deserialize("foo") == "FOOBAR"
+
+    def test_decorated_processors_with_context(self):
+        class MySchema(Schema):
+            f_1 = fields.Integer()
+            f_2 = fields.Integer()
+            f_3 = fields.Integer()
+            f_4 = fields.Integer()
+
+            @pre_dump
+            def multiply_f_1(self, item, **kwargs):
+                item["f_1"] *= Context.get()[1]
+                return item
+
+            @pre_load
+            def multiply_f_2(self, data, **kwargs):
+                data["f_2"] *= Context.get()[2]
+                return data
+
+            @post_dump
+            def multiply_f_3(self, item, **kwargs):
+                item["f_3"] *= Context.get()[3]
+                return item
+
+            @post_load
+            def multiply_f_4(self, data, **kwargs):
+                data["f_4"] *= Context.get()[4]
+                return data
+
+        schema = MySchema()
+
+        with Context({1: 2, 2: 3, 3: 4, 4: 5}):
+            assert schema.dump({"f_1": 1, "f_2": 1, "f_3": 1, "f_4": 1}) == {
+                "f_1": 2,
+                "f_2": 1,
+                "f_3": 4,
+                "f_4": 1,
+            }
+            assert schema.load({"f_1": 1, "f_2": 1, "f_3": 1, "f_4": 1}) == {
+                "f_1": 1,
+                "f_2": 3,
+                "f_3": 1,
+                "f_4": 5,
+            }
+
+    def test_validates_schema_with_context(self):
+        class MySchema(Schema):
+            f_1 = fields.Integer()
+            f_2 = fields.Integer()
+
+            @validates_schema
+            def validate_schema(self, data, **kwargs):
+                if data["f_2"] != data["f_1"] * Context.get():
+                    raise ValidationError("Fail")
+
+        schema = MySchema()
+
+        with Context(2):
+            schema.load({"f_1": 1, "f_2": 2})
+            with pytest.raises(ValidationError) as excinfo:
+                schema.load({"f_1": 1, "f_2": 3})
+            assert excinfo.value.messages["_schema"] == ["Fail"]
