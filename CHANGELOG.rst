@@ -63,6 +63,19 @@ Previously-deprecated API have been removed, including:
 - `json_module` class Meta option (deprecated in 3.0.0b3). Use `render_module` instead.
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 
+3.23.3 (2025-01-03)
+*******************
+
+Bug fixes:
+
+- Typing: Fix typing for `Schema.from_dict <marshmallow.schema.Schema.from_dict>` (:issue:`1653`).
+  Thanks :user:`SteadBytes` for reporting.
+
+Support:
+
+- Documentation: Various documentation cleanups, including more concise docs in the `marshmallow.fields` API reference (:issue:`2307`).
+  Thanks :user:`AbdealiLoKo` for reporting.
+
 3.23.2 (2024-12-18)
 *******************
 
