@@ -1,38 +1,9 @@
 import datetime as dt
-from collections import OrderedDict
-
-import pytest
 
 from marshmallow import EXCLUDE, Schema, fields
-from tests.base import User
 
 
-class TestUnordered:
-    class UnorderedSchema(Schema):
-        name = fields.Str()
-        email = fields.Str()
-
-        class Meta:
-            ordered = False
-
-    def test_unordered_dump_returns_dict(self):
-        schema = self.UnorderedSchema()
-        u = User("steve", email="steve@steve.steve")
-        result = schema.dump(u)
-        assert not isinstance(result, OrderedDict)
-        assert type(result) is dict
-
-    def test_unordered_load_returns_dict(self):
-        schema = self.UnorderedSchema()
-        result = schema.load({"name": "steve", "email": "steve@steve.steve"})
-        assert not isinstance(result, OrderedDict)
-        assert type(result) is dict
-
-
-class KeepOrder(Schema):
-    class Meta:
-        ordered = True
-
+class UserSchema(Schema):
     name = fields.String(allow_none=True)
     email = fields.Email(allow_none=True)
     age = fields.Integer()
@@ -42,62 +13,13 @@ class KeepOrder(Schema):
     birthdate = fields.Date()
 
 
-class OrderedNestedOnly(Schema):
-    class Meta:
-        ordered = True
-
-    user = fields.Nested(KeepOrder)
+class ProfileSchema(Schema):
+    user = fields.Nested(UserSchema)
 
 
 class TestFieldOrdering:
-    @pytest.mark.parametrize("with_meta", (False, True))
-    def test_ordered_option_is_inherited(self, user, with_meta):
-        class ParentUnordered(Schema):
-            class Meta:
-                ordered = False
-
-        # KeepOrder is before ParentUnordered in MRO,
-        # so ChildOrderedSchema will be ordered
-        class ChildOrderedSchema(KeepOrder, ParentUnordered):
-            if with_meta:
-
-                class Meta:
-                    pass
-
-        schema = ChildOrderedSchema()
-        assert schema.opts.ordered is True
-        assert schema.dict_class == OrderedDict
-
-        data = schema.dump(user)
-        keys = list(data)
-        assert keys == [
-            "name",
-            "email",
-            "age",
-            "created",
-            "id",
-            "homepage",
-            "birthdate",
-        ]
-
-        # KeepOrder is before ParentUnordered in MRO,
-        # so ChildOrderedSchema will be ordered
-        class ChildUnorderedSchema(ParentUnordered, KeepOrder):
-            class Meta:
-                pass
-
-        schema = ChildUnorderedSchema()
-        assert schema.opts.ordered is False
-
-    def test_ordering_is_off_by_default(self):
-        class DummySchema(Schema):
-            pass
-
-        schema = DummySchema()
-        assert schema.ordered is False
-
     def test_declared_field_order_is_maintained_on_dump(self, user):
-        ser = KeepOrder()
+        ser = UserSchema()
         data = ser.dump(user)
         keys = list(data)
         assert keys == [
@@ -111,7 +33,7 @@ class TestFieldOrdering:
         ]
 
     def test_declared_field_order_is_maintained_on_load(self, serialized_user):
-        schema = KeepOrder(unknown=EXCLUDE)
+        schema = UserSchema(unknown=EXCLUDE)
         data = schema.load(serialized_user)
         keys = list(data)
         assert keys == [
@@ -125,7 +47,7 @@ class TestFieldOrdering:
         ]
 
     def test_nested_field_order_with_only_arg_is_maintained_on_dump(self, user):
-        schema = OrderedNestedOnly()
+        schema = ProfileSchema()
         data = schema.dump({"user": user})
         user_data = data["user"]
         keys = list(user_data)
@@ -140,7 +62,7 @@ class TestFieldOrdering:
         ]
 
     def test_nested_field_order_with_only_arg_is_maintained_on_load(self):
-        schema = OrderedNestedOnly()
+        schema = ProfileSchema()
         data = schema.load(
             {
                 "user": {
@@ -168,7 +90,7 @@ class TestFieldOrdering:
 
     def test_nested_field_order_with_exclude_arg_is_maintained(self, user):
         class HasNestedExclude(Schema):
-            user = fields.Nested(KeepOrder, exclude=("birthdate",))
+            user = fields.Nested(UserSchema, exclude=("birthdate",))
 
         ser = HasNestedExclude()
         data = ser.dump({"user": user})

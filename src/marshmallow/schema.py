@@ -10,7 +10,7 @@ import json
 import typing
 import uuid
 from abc import ABCMeta
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from collections.abc import Mapping
 
 from marshmallow import base, class_registry, types
@@ -82,18 +82,6 @@ class SchemaMeta(ABCMeta):
 
     def __new__(mcs, name, bases, attrs):
         meta = attrs.get("Meta")
-        ordered = getattr(meta, "ordered", False)
-        if not ordered:
-            # Inherit 'ordered' option
-            # Warning: We loop through bases instead of MRO because we don't
-            # yet have access to the class object
-            # (i.e. can't call super before we have fields)
-            for base_ in bases:
-                if hasattr(base_, "Meta") and hasattr(base_.Meta, "ordered"):
-                    ordered = base_.Meta.ordered
-                    break
-            else:
-                ordered = False
         cls_fields = _get_fields(attrs)
         # Remove fields from list of class attributes to avoid shadowing
         # Schema attributes/methods in case of name conflict
@@ -105,7 +93,7 @@ class SchemaMeta(ABCMeta):
         meta = klass.Meta
         # Set klass.opts in __new__ rather than __init__ so that it is accessible in
         # get_declared_fields
-        klass.opts = klass.OPTIONS_CLASS(meta, ordered=ordered)
+        klass.opts = klass.OPTIONS_CLASS(meta)
         # Add fields specified in the `include` class Meta option
         cls_fields += list(klass.opts.include.items())
 
@@ -189,7 +177,7 @@ class SchemaMeta(ABCMeta):
 class SchemaOpts:
     """class Meta options for the :class:`Schema`. Defines defaults."""
 
-    def __init__(self, meta, ordered: bool = False):
+    def __init__(self, meta):
         self.fields = getattr(meta, "fields", ())
         if not isinstance(self.fields, (list, tuple)):
             raise ValueError("`fields` option must be a list or tuple.")
@@ -200,7 +188,6 @@ class SchemaOpts:
         self.datetimeformat = getattr(meta, "datetimeformat", None)
         self.timeformat = getattr(meta, "timeformat", None)
         self.render_module = getattr(meta, "render_module", json)
-        self.ordered = getattr(meta, "ordered", ordered)
         self.index_errors = getattr(meta, "index_errors", True)
         self.include = getattr(meta, "include", {})
         self.load_only = getattr(meta, "load_only", ())
@@ -259,13 +246,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
 
     .. versionchanged:: 3.0.0
         `prefix` parameter removed.
-
-    .. versionchanged:: 2.0.0
-        `__validators__`, `__preprocessors__`, and `__data_handlers__` are removed in favor of
-        `marshmallow.decorators.validates_schema`,
-        `marshmallow.decorators.pre_load` and `marshmallow.decorators.post_dump`.
-        `__accessor__` and `__error_handler__` are deprecated. Implement the
-        `handle_error` and `get_attribute` methods instead.
     """
 
     TYPE_MAPPING = {
@@ -295,6 +275,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
     OPTIONS_CLASS = SchemaOpts  # type: type
 
     set_class = OrderedSet
+    dict_class = dict  # type: type[dict]
 
     # These get set by SchemaMeta
     opts = None  # type: SchemaOpts
@@ -361,7 +342,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         self.exclude: set[typing.Any] | typing.MutableSet[typing.Any] = set(
             self.opts.exclude
         ) | set(exclude)
-        self.ordered = self.opts.ordered
         self.load_only = set(load_only) or set(self.opts.load_only)
         self.dump_only = set(dump_only) or set(self.opts.dump_only)
         self.partial = partial
@@ -386,17 +366,10 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(many={self.many})>"
 
-    @property
-    def dict_class(self) -> type[dict]:
-        if self.ordered:
-            return OrderedDict
-        else:
-            return dict
-
     @classmethod
     def from_dict(
         cls,
-        fields: dict[str, ma_fields.Field | type[ma_fields.Field]],
+        fields: dict[str, ma_fields.Field],
         *,
         name: str = "GeneratedSchema",
     ) -> type[Schema]:
@@ -418,11 +391,10 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
 
         .. versionadded:: 3.0.0
         """
-        attrs = fields.copy()
-        attrs["Meta"] = type(
+        Meta = type(
             "GeneratedMeta", (getattr(cls, "Meta", object),), {"register": False}
         )
-        schema_cls = type(name, (cls,), attrs)
+        schema_cls = type(name, (cls,), {**fields.copy(), "Meta": Meta})
         return schema_cls
 
     ##### Override-able methods #####
@@ -437,8 +409,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         :param many: Value of ``many`` on dump or load.
         :param partial: Value of ``partial`` on load.
 
-        .. versionadded:: 2.0.0
-
         .. versionchanged:: 3.0.0rc9
             Receives `many` and `partial` (on deserialization) as keyword arguments.
         """
@@ -446,8 +416,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
 
     def get_attribute(self, obj: typing.Any, attr: str, default: typing.Any):
         """Defines how to pull values from an object to serialize.
-
-        .. versionadded:: 2.0.0
 
         .. versionchanged:: 3.0.0a1
             Changed position of ``obj`` and ``attr``.
@@ -482,9 +450,6 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         :param obj: The object(s) to serialize.
         :param bool many: `True` if ``data`` should be serialized as a collection.
         :return: A dictionary of the serialized data
-
-        .. versionchanged:: 1.0.0
-            Renamed from ``marshal``.
         """
         if many and obj is not None:
             return [self._serialize(d, many=False) for d in obj]
@@ -848,7 +813,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 field_errors = bool(error_store.errors)
                 self._invoke_schema_validators(
                     error_store=error_store,
-                    pass_many=True,
+                    pass_collection=True,
                     data=result,
                     original_data=data,
                     many=many,
@@ -857,7 +822,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 )
                 self._invoke_schema_validators(
                     error_store=error_store,
-                    pass_many=False,
+                    pass_collection=False,
                     data=result,
                     original_data=data,
                     many=many,
@@ -1030,14 +995,18 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
     def _invoke_dump_processors(
         self, tag: str, data, *, many: bool, original_data=None
     ):
-        # The pass_many post-dump processors may do things like add an envelope, so
-        # invoke those after invoking the non-pass_many processors which will expect
+        # The pass_collection post-dump processors may do things like add an envelope, so
+        # invoke those after invoking the non-pass_collection processors which will expect
         # to get a list of items.
         data = self._invoke_processors(
-            tag, pass_many=False, data=data, many=many, original_data=original_data
+            tag,
+            pass_collection=False,
+            data=data,
+            many=many,
+            original_data=original_data,
         )
         data = self._invoke_processors(
-            tag, pass_many=True, data=data, many=many, original_data=original_data
+            tag, pass_collection=True, data=data, many=many, original_data=original_data
         )
         return data
 
@@ -1050,11 +1019,11 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         original_data,
         partial: bool | types.StrSequenceOrSet | None,
     ):
-        # This has to invert the order of the dump processors, so run the pass_many
+        # This has to invert the order of the dump processors, so run the pass_collection
         # processors first.
         data = self._invoke_processors(
             tag,
-            pass_many=True,
+            pass_collection=True,
             data=data,
             many=many,
             original_data=original_data,
@@ -1062,7 +1031,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         )
         data = self._invoke_processors(
             tag,
-            pass_many=False,
+            pass_collection=False,
             data=data,
             many=many,
             original_data=original_data,
@@ -1120,7 +1089,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         self,
         *,
         error_store: ErrorStore,
-        pass_many: bool,
+        pass_collection: bool,
         data,
         original_data,
         many: bool,
@@ -1128,14 +1097,14 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         field_errors: bool = False,
     ):
         for attr_name, hook_many, validator_kwargs in self._hooks[VALIDATES_SCHEMA]:
-            if hook_many != pass_many:
+            if hook_many != pass_collection:
                 continue
             validator = getattr(self, attr_name)
             if field_errors and validator_kwargs["skip_on_field_errors"]:
                 continue
             pass_original = validator_kwargs.get("pass_original", False)
 
-            if many and not pass_many:
+            if many and not pass_collection:
                 for idx, (item, orig) in enumerate(zip(data, original_data)):
                     self._run_validator(
                         validator,
@@ -1162,20 +1131,20 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         self,
         tag: str,
         *,
-        pass_many: bool,
+        pass_collection: bool,
         data,
         many: bool,
         original_data=None,
         **kwargs,
     ):
         for attr_name, hook_many, processor_kwargs in self._hooks[tag]:
-            if hook_many != pass_many:
+            if hook_many != pass_collection:
                 continue
             # This will be a bound method.
             processor = getattr(self, attr_name)
             pass_original = processor_kwargs.get("pass_original", False)
 
-            if many and not pass_many:
+            if many and not pass_collection:
                 if pass_original:
                     data = [
                         processor(item, original, many=many, **kwargs)

@@ -4,7 +4,15 @@ Changelog
 4.0.0 (unreleased)
 ******************
 
-- *Backwards-incompatible*: Remove implicit field creation, i.e. using the ``fields`` or ``additional`` class Meta options with undeclared fields (:issue:`1356`).
+See :ref:`upgrading_4_0` for a guide on updating your code.
+
+Features:
+
+- Typing: Add types to all `Field <marshmallow.fields.Field>` subclass kwargs (:issue:`2285`).
+  Thanks :user:`navignaw` for the suggestion.
+
+Other changes:
+
 - *Backwards-incompatible*: Use `datetime.date.fromisoformat`, `datetime.time.fromisoformat`, and `datetime.datetime.fromisoformat` from the standard library to deserialize dates, times and datetimes (:pr:`2078`).
 
 As a consequence of this change:
@@ -12,8 +20,10 @@ As a consequence of this change:
   - YYYY-MM-DD is now accepted as a datetime and deserialized as naive 00:00 AM.
   - `from_iso_date`, `from_iso_time` and `from_iso_datetime` are removed from `marshmallow.utils`
 
+- *Backwards-incompatible*: Custom validators must raise a `ValidationError <marshmallow.exceptions.ValidationError>` for invalid values.
+  Returning `False` is no longer supported (:issue:`1775`).
 - *Backwards-incompatible*: Rename ``schema`` parameter to ``parent`` in `marshmallow.fields.Field._bind_to_schema` (:issue:`1360`).
-
+- *Backwards-incompatible*: Rename ``pass_many`` parameter to ``pass_collection`` in pre/post processing methods (:issue:`1369`).
 - *Backwards-incompatible*: `marshmallow.fields.TimeDelta` no longer truncates float values when
   deserializing (:pr:`2654`). This allows microseconds to be preserved, e.g.
 
@@ -38,6 +48,12 @@ As a consequence of this change:
 
 Thanks :user:`ddelange` for the PR.
 
+Deprecations/Removals:
+
+- *Backwards-incompatible*: Remove implicit field creation, i.e. using the ``fields`` or ``additional`` class Meta options with undeclared fields (:issue:`1356`).
+- The `ordered` class Meta option is removed  (:issue:`2146`). Field order is already preserved by default.
+  Set `Schema.dict_class` to `OrderedDict` to maintain the previous behavior.
+
 Previously-deprecated API have been removed, including:
 
 - `default` and `missing` parameters, which were replaced by `dump_default` and `load_default` in 3.13.0 (:pr:`1742`, :pr:`2700`).
@@ -47,6 +63,19 @@ Previously-deprecated API have been removed, including:
 - Passing `"self"` to `fields.Nested` (deprecated in 3.3.0). Use a callable instead.
 - `json_module` class Meta option (deprecated in 3.0.0b3). Use `render_module` instead.
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
+
+3.23.3 (2025-01-03)
+*******************
+
+Bug fixes:
+
+- Typing: Fix typing for `Schema.from_dict <marshmallow.schema.Schema.from_dict>` (:issue:`1653`).
+  Thanks :user:`SteadBytes` for reporting.
+
+Support:
+
+- Documentation: Various documentation cleanups, including more concise docs in the `marshmallow.fields` API reference (:issue:`2307`).
+  Thanks :user:`AbdealiLoKo` for reporting.
 
 3.23.2 (2024-12-18)
 *******************

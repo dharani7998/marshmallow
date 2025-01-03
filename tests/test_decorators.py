@@ -11,9 +11,11 @@ from marshmallow import (
     post_load,
     pre_dump,
     pre_load,
+    validate,
     validates,
     validates_schema,
 )
+from tests.base import predicate
 
 
 @pytest.mark.parametrize("partial_val", (True, False))
@@ -40,13 +42,13 @@ def test_decorated_processors(partial_val):
             return item
 
         # Explicitly raw, post dump, instance method.
-        @post_dump(pass_many=True)
+        @post_dump(pass_collection=True)
         def add_envelope(self, data, many, **kwargs):
             key = self.get_envelope_key(many)
             return {key: data}
 
         # Explicitly raw, pre load, instance method.
-        @pre_load(pass_many=True)
+        @pre_load(pass_collection=True)
         def remove_envelope(self, data, many, partial, **kwargs):
             assert partial is partial_val
             key = self.get_envelope_key(many)
@@ -57,7 +59,7 @@ def test_decorated_processors(partial_val):
             return "data" if many else "datum"
 
         # Explicitly not raw, pre load, instance method.
-        @pre_load(pass_many=False)
+        @pre_load(pass_collection=False)
         def remove_tag(self, item, partial, **kwargs):
             assert partial is partial_val
             assert "many" in kwargs
@@ -156,7 +158,7 @@ class TestPassOriginal:
         class MySchema(Schema):
             foo = fields.Field()
 
-            @post_load(pass_many=True, pass_original=True)
+            @post_load(pass_collection=True, pass_original=True)
             def post_load(self, data, original, many, **kwargs):
                 if many:
                     ret = []
@@ -168,7 +170,7 @@ class TestPassOriginal:
                     ret["_post_load"] = original["sentinel"]
                 return ret
 
-            @post_dump(pass_many=True, pass_original=True)
+            @post_dump(pass_collection=True, pass_original=True)
             def post_dump(self, data, original, many, **kwargs):
                 if many:
                     ret = []
@@ -333,8 +335,8 @@ class TestValidatesDecorator:
 
     def test_precedence(self):
         class Schema2(ValidatesSchema):
-            foo = fields.Int(validate=lambda n: n != 42)
-            bar = fields.Int(validate=lambda n: n == 1)
+            foo = fields.Int(validate=predicate(lambda n: n != 42))
+            bar = fields.Int(validate=validate.Equal(1))
 
             @validates("bar")
             def validate_bar(self, value):
@@ -351,7 +353,7 @@ class TestValidatesDecorator:
         errors = schema.validate({"bar": 3})
         assert "bar" in errors
         assert len(errors["bar"]) == 1
-        assert "Invalid value." in errors["bar"][0]
+        assert "Must be equal to 1." in errors["bar"][0]
 
         errors = schema.validate({"bar": 1})
         assert "bar" in errors
@@ -432,19 +434,19 @@ class TestValidatesSchemaDecorator:
 
     @pytest.mark.parametrize("data", ([{"foo": 1, "bar": 2}],))
     @pytest.mark.parametrize(
-        "pass_many,expected_data,expected_original_data",
+        "pass_collection,expected_data,expected_original_data",
         (
             [True, [{"foo": 1}], [{"foo": 1, "bar": 2}]],
             [False, {"foo": 1}, {"foo": 1, "bar": 2}],
         ),
     )
-    def test_validator_nested_many_pass_original_and_pass_many(
-        self, pass_many, data, expected_data, expected_original_data
+    def test_validator_nested_many_pass_original_and_pass_collection(
+        self, pass_collection, data, expected_data, expected_original_data
     ):
         class NestedSchema(Schema):
             foo = fields.Int(required=True)
 
-            @validates_schema(pass_many=pass_many, pass_original=True)
+            @validates_schema(pass_collection=pass_collection, pass_original=True)
             def validate_schema(self, data, original_data, many, **kwargs):
                 assert data == expected_data
                 assert original_data == expected_original_data
@@ -458,7 +460,7 @@ class TestValidatesSchemaDecorator:
 
         schema = MySchema()
         errors = schema.validate({"nested": data})
-        error = errors["nested"] if pass_many else errors["nested"][0]
+        error = errors["nested"] if pass_collection else errors["nested"][0]
         assert error["_schema"][0] == "Method called"
 
     def test_decorated_validators(self):
@@ -471,7 +473,7 @@ class TestValidatesSchemaDecorator:
                 if data["foo"] <= 3:
                     raise ValidationError("Must be greater than 3")
 
-            @validates_schema(pass_many=True)
+            @validates_schema(pass_collection=True)
             def validate_raw(self, data, many, **kwargs):
                 if many:
                     assert type(data) is list
@@ -572,7 +574,7 @@ class TestValidatesSchemaDecorator:
                 ):
                     raise ValidationError("foo cannot be a string")
 
-            @validates_schema(pass_many=True, pass_original=True)
+            @validates_schema(pass_collection=True, pass_original=True)
             def validate_original_bar(self, data, original_data, many, **kwargs):
                 def check(datum):
                     if isinstance(datum, dict) and isinstance(datum["bar"], str):
@@ -631,7 +633,7 @@ class TestValidatesSchemaDecorator:
 
     def test_skip_on_field_errors(self):
         class MySchema(Schema):
-            foo = fields.Int(required=True, validate=lambda n: n == 3)
+            foo = fields.Int(required=True, validate=validate.Equal(3))
             bar = fields.Int(required=True)
 
             @validates_schema(skip_on_field_errors=True)
@@ -639,7 +641,7 @@ class TestValidatesSchemaDecorator:
                 if data["foo"] != data["bar"]:
                     raise ValidationError("Foo and bar must be equal.")
 
-            @validates_schema(skip_on_field_errors=True, pass_many=True)
+            @validates_schema(skip_on_field_errors=True, pass_collection=True)
             def validate_many(self, data, many, **kwargs):
                 if many:
                     assert type(data) is list
@@ -815,22 +817,22 @@ example = Example(nested=[Nested(x) for x in range(1)])
     "data,expected_data,expected_original_data",
     ([example, {"foo": 0}, example.nested[0]],),
 )
-def test_decorator_post_dump_with_nested_original_and_pass_many(
+def test_decorator_post_dump_with_nested_original_and_pass_collection(
     data, expected_data, expected_original_data
 ):
     class NestedSchema(Schema):
         foo = fields.Int(required=True)
 
-        @post_dump(pass_many=False, pass_original=True)
-        def check_pass_original_when_pass_many_false(
+        @post_dump(pass_collection=False, pass_original=True)
+        def check_pass_original_when_pass_collection_false(
             self, data, original_data, **kwargs
         ):
             assert data == expected_data
             assert original_data == expected_original_data
             return data
 
-        @post_dump(pass_many=True, pass_original=True)
-        def check_pass_original_when_pass_many_true(
+        @post_dump(pass_collection=True, pass_original=True)
+        def check_pass_original_when_pass_collection_true(
             self, data, original_data, many, **kwargs
         ):
             assert many is True
@@ -849,22 +851,22 @@ def test_decorator_post_dump_with_nested_original_and_pass_many(
     "data,expected_data,expected_original_data",
     ([{"nested": [{"foo": 0}]}, {"foo": 0}, {"foo": 0}],),
 )
-def test_decorator_post_load_with_nested_original_and_pass_many(
+def test_decorator_post_load_with_nested_original_and_pass_collection(
     data, expected_data, expected_original_data
 ):
     class NestedSchema(Schema):
         foo = fields.Int(required=True)
 
-        @post_load(pass_many=False, pass_original=True)
-        def check_pass_original_when_pass_many_false(
+        @post_load(pass_collection=False, pass_original=True)
+        def check_pass_original_when_pass_collection_false(
             self, data, original_data, **kwargs
         ):
             assert data == expected_data
             assert original_data == expected_original_data
             return data
 
-        @post_load(pass_many=True, pass_original=True)
-        def check_pass_original_when_pass_many_true(
+        @post_load(pass_collection=True, pass_original=True)
+        def check_pass_original_when_pass_collection_true(
             self, data, original_data, many, **kwargs
         ):
             assert many is True

@@ -1,5 +1,3 @@
-"""Field classes for various types of data."""
-
 from __future__ import annotations
 
 import collections
@@ -14,7 +12,12 @@ import uuid
 from collections.abc import Mapping as _Mapping
 from enum import Enum as EnumType
 
-# Remove this when dropping Python 3.10
+try:
+    from typing import Unpack
+except ImportError:  # Remove when dropping Python 3.10
+    from typing_extensions import Unpack
+
+# Remove when dropping Python 3.10
 try:
     from backports.datetime_fromisoformat import MonkeyPatch
 except ImportError:
@@ -86,11 +89,28 @@ __all__ = [
 _T = typing.TypeVar("_T")
 
 
+class _BaseFieldKwargs(typing.TypedDict, total=False):
+    load_default: typing.Any
+    dump_default: typing.Any
+    data_key: str | None
+    attribute: str | None
+    validate: (
+        typing.Callable[[typing.Any], typing.Any]
+        | typing.Iterable[typing.Callable[[typing.Any], typing.Any]]
+        | None
+    )
+    required: bool
+    allow_none: bool | None
+    load_only: bool
+    dump_only: bool
+    error_messages: dict[str, str] | None
+    metadata: typing.Mapping[str, typing.Any] | None
+
+
 class Field(FieldABC):
     """Basic field from which other fields should extend. It applies no
     formatting by default, and should only be used in cases where
     data does not need to be formatted before being serialized or deserialized.
-    On error, the name of the field will be returned.
 
     :param dump_default: If set, this value will be used during serialization if the
         input value is missing. If not set, the field will be excluded from the
@@ -114,8 +134,9 @@ class Field(FieldABC):
     :param required: Raise a :exc:`ValidationError` if the field value
         is not supplied during deserialization.
     :param allow_none: Set this to `True` if `None` should be considered a valid value during
-        validation/deserialization. If ``load_default=None`` and ``allow_none`` is unset,
-        will default to ``True``. Otherwise, the default is ``False``.
+        validation/deserialization. If set to `False` (the default), `None` is considered invalid input.
+        If ``load_default`` is explicitly set to `None` and ``allow_none`` is unset,
+        `allow_none` is implicitly set to ``True``.
     :param load_only: If `True` skip this field during serialization, otherwise
         its value will be present in the serialized data.
     :param dump_only: If `True` skip this field during deserialization, otherwise
@@ -124,28 +145,12 @@ class Field(FieldABC):
     :param dict error_messages: Overrides for `Field.default_error_messages`.
     :param metadata: Extra information to be stored as field metadata.
 
-    .. versionchanged:: 2.0.0
-        Removed `error` parameter. Use ``error_messages`` instead.
-
-    .. versionchanged:: 2.0.0
-        Added `allow_none` parameter, which makes validation/deserialization of `None`
-        consistent across fields.
-
-    .. versionchanged:: 2.0.0
-        Added `load_only` and `dump_only` parameters, which allow field skipping
-        during the (de)serialization process.
-
-    .. versionchanged:: 2.0.0
-        Added `missing` parameter, which indicates the value for a field if the field
-        is not found during deserialization.
-
-    .. versionchanged:: 2.0.0
-        ``default`` value is only used if explicitly set. Otherwise, missing values
-        inputs are excluded from serialized output.
-
     .. versionchanged:: 3.0.0b8
         Add ``data_key`` parameter for the specifying the key in the input and
         output data. This parameter replaced both ``load_from`` and ``dump_to``.
+
+    .. versionchanged:: 3.13.0
+        Replace ``missing`` and ``default`` parameters with ``load_default`` and ``dump_default``.
     """
 
     # Some fields, such as Method fields and Function fields, are not expected
@@ -250,7 +255,7 @@ class Field(FieldABC):
 
     @property
     def _validate_all(self):
-        return And(*self.validators, error=self.error_messages["validator_failed"])
+        return And(*self.validators)
 
     def make_error(self, key: str, **kwargs) -> ValidationError:
         """Helper method to make a `ValidationError` with an error message
@@ -387,9 +392,6 @@ class Field(FieldABC):
         :raise ValidationError: In case of formatting or validation failure.
         :return: The deserialized value.
 
-        .. versionchanged:: 2.0.0
-            Added ``attr`` and ``data`` parameters.
-
         .. versionchanged:: 3.0.0
             Added ``**kwargs`` to signature.
         """
@@ -461,12 +463,11 @@ class Nested(Field):
             ]
         ),
         *,
-        dump_default: typing.Any = missing_,
         only: types.StrSequenceOrSet | None = None,
         exclude: types.StrSequenceOrSet = (),
         many: bool = False,
         unknown: str | None = None,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         # Raise error if only or exclude is passed as string, not list of strings
         if only is not None and not is_collection(only):
@@ -481,7 +482,7 @@ class Nested(Field):
         self.many = many
         self.unknown = unknown
         self._schema = None  # Cached Schema instance
-        super().__init__(dump_default=dump_default, **kwargs)
+        super().__init__(**kwargs)
 
     @property
     def schema(self):
@@ -608,7 +609,7 @@ class Pluck(Nested):
         self,
         nested: SchemaABC | SchemaMeta | str | typing.Callable[[], SchemaABC],
         field_name: str,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(nested, only=(field_name,), **kwargs)
         self.field_name = field_name
@@ -646,10 +647,6 @@ class List(Field):
     :param cls_or_instance: A field class or instance.
     :param kwargs: The same keyword arguments that :class:`Field` receives.
 
-    .. versionchanged:: 2.0.0
-        The ``allow_none`` parameter now applies to deserialization and
-        has the same semantics as the other fields.
-
     .. versionchanged:: 3.0.0rc9
         Does not serialize scalar values to single-item lists.
     """
@@ -657,7 +654,9 @@ class List(Field):
     #: Default error messages.
     default_error_messages = {"invalid": "Not a valid list."}
 
-    def __init__(self, cls_or_instance: Field | type[Field], **kwargs):
+    def __init__(
+        self, cls_or_instance: Field | type[Field], **kwargs: Unpack[_BaseFieldKwargs]
+    ):
         super().__init__(**kwargs)
         try:
             self.inner = resolve_field_instance(cls_or_instance)
@@ -724,8 +723,8 @@ class Tuple(Field):
     #: Default error messages.
     default_error_messages = {"invalid": "Not a valid tuple."}
 
-    def __init__(self, tuple_fields, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, tuple_fields, **kwargs: Unpack[_BaseFieldKwargs]):
+        super().__init__(**kwargs)
         if not utils.is_collection(tuple_fields):
             raise ValueError(
                 "tuple_fields must be an iterable of Field classes or " "instances."
@@ -849,7 +848,7 @@ class Number(Field):
         "too_large": "Number too large.",
     }
 
-    def __init__(self, *, as_string: bool = False, **kwargs):
+    def __init__(self, *, as_string: bool = False, **kwargs: Unpack[_BaseFieldKwargs]):
         self.as_string = as_string
         super().__init__(**kwargs)
 
@@ -898,9 +897,15 @@ class Integer(Number):
     #: Default error messages.
     default_error_messages = {"invalid": "Not a valid integer."}
 
-    def __init__(self, *, strict: bool = False, **kwargs):
+    def __init__(
+        self,
+        *,
+        strict: bool = False,
+        as_string: bool = False,
+        **kwargs: Unpack[_BaseFieldKwargs],
+    ):
         self.strict = strict
-        super().__init__(**kwargs)
+        super().__init__(as_string=as_string, **kwargs)
 
     # override Number
     def _validated(self, value):
@@ -925,7 +930,13 @@ class Float(Number):
         "special": "Special numeric values (nan or infinity) are not permitted."
     }
 
-    def __init__(self, *, allow_nan: bool = False, as_string: bool = False, **kwargs):
+    def __init__(
+        self,
+        *,
+        allow_nan: bool = False,
+        as_string: bool = False,
+        **kwargs: Unpack[_BaseFieldKwargs],
+    ):
         self.allow_nan = allow_nan
         super().__init__(as_string=as_string, **kwargs)
 
@@ -988,7 +999,7 @@ class Decimal(Number):
         *,
         allow_nan: bool = False,
         as_string: bool = False,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         self.places = (
             decimal.Decimal((0, (1,), -places)) if places is not None else None
@@ -1083,7 +1094,7 @@ class Boolean(Field):
         *,
         truthy: set | None = None,
         falsy: set | None = None,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(**kwargs)
 
@@ -1166,7 +1177,9 @@ class DateTime(Field):
         "format": '"{input}" cannot be formatted as a {obj_type}.',
     }
 
-    def __init__(self, format: str | None = None, **kwargs) -> None:
+    def __init__(
+        self, format: str | None = None, **kwargs: Unpack[_BaseFieldKwargs]
+    ) -> None:
         super().__init__(**kwargs)
         # Allow this to be None. It may be set later in the ``_serialize``
         # or ``_deserialize`` methods. This allows a Schema to dynamically set the
@@ -1227,7 +1240,7 @@ class NaiveDateTime(DateTime):
         format: str | None = None,
         *,
         timezone: dt.timezone | None = None,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ) -> None:
         super().__init__(format=format, **kwargs)
         self.timezone = timezone
@@ -1264,7 +1277,7 @@ class AwareDateTime(DateTime):
         format: str | None = None,
         *,
         default_timezone: dt.tzinfo | None = None,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ) -> None:
         super().__init__(format=format, **kwargs)
         self.default_timezone = default_timezone
@@ -1361,9 +1374,6 @@ class TimeDelta(Field):
     a `float` might be subject to rounding, regardless of `precision`. For example,
     ``TimeDelta().deserialize("1.1234567") == timedelta(seconds=1, microseconds=123457)``.
 
-    .. versionchanged:: 2.0.0
-        Always serializes to an integer value to avoid rounding errors.
-        Add `precision` parameter.
     .. versionchanged:: 3.17.0
         Allow serialization to `float` through use of a new `serialization_type` parameter.
         Defaults to `int` for backwards compatibility. Also affects deserialization.
@@ -1400,7 +1410,7 @@ class TimeDelta(Field):
     def __init__(
         self,
         precision: str = SECONDS,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ) -> None:
         precision = precision.lower()
 
@@ -1458,7 +1468,7 @@ class Mapping(Field):
         self,
         keys: Field | type[Field] | None = None,
         values: Field | type[Field] | None = None,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(**kwargs)
         if keys is None:
@@ -1606,7 +1616,7 @@ class Url(String):
         absolute: bool = True,
         schemes: types.StrSequenceOrSet | None = None,
         require_tld: bool = True,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(**kwargs)
 
@@ -1634,8 +1644,8 @@ class Email(String):
     #: Default error messages.
     default_error_messages = {"invalid": "Not a valid email address."}
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, **kwargs: Unpack[_BaseFieldKwargs]) -> None:
+        super().__init__(**kwargs)
         # Insert validation into self.validators so that multiple errors can be stored.
         validator = validate.Email(error=self.error_messages["invalid"])
         self.validators.insert(0, validator)
@@ -1654,8 +1664,8 @@ class IP(Field):
 
     DESERIALIZATION_CLASS = None  # type: typing.Optional[typing.Type]
 
-    def __init__(self, *args, exploded=False, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *, exploded: bool = False, **kwargs: Unpack[_BaseFieldKwargs]):
+        super().__init__(**kwargs)
         self.exploded = exploded
 
     def _serialize(self, value, attr, obj, **kwargs) -> str | None:
@@ -1718,8 +1728,8 @@ class IPInterface(Field):
 
     DESERIALIZATION_CLASS = None  # type: typing.Optional[typing.Type]
 
-    def __init__(self, *args, exploded: bool = False, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *, exploded: bool = False, **kwargs: Unpack[_BaseFieldKwargs]):
+        super().__init__(**kwargs)
         self.exploded = exploded
 
     def _serialize(self, value, attr, obj, **kwargs) -> str | None:
@@ -1781,7 +1791,7 @@ class Enum(Field):
         enum: type[EnumType],
         *,
         by_value: bool | Field | type[Field] = False,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(**kwargs)
         self.enum = enum
@@ -1841,9 +1851,6 @@ class Method(Field):
         a value The method must take a single argument ``value``, which is the
         value to deserialize.
 
-    .. versionchanged:: 2.0.0
-        Removed optional ``context`` parameter on methods. Use ``self.context`` instead.
-
     .. versionchanged:: 2.3.0
         Deprecated ``method_name`` parameter in favor of ``serialize`` and allow
         ``serialize`` to not be passed at all.
@@ -1858,7 +1865,7 @@ class Method(Field):
         self,
         serialize: str | None = None,
         deserialize: str | None = None,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],  # FIXME: Omit dump_only and load_only
     ):
         # Set dump_only and load_only based on arguments
         kwargs["dump_only"] = bool(serialize) and not bool(deserialize)
@@ -1928,7 +1935,7 @@ class Function(Field):
             | typing.Callable[[typing.Any, dict], typing.Any]
             | None
         ) = None,
-        **kwargs,
+        **kwargs: Unpack[_BaseFieldKwargs],  # FIXME: Omit dump_only and load_only
     ):
         # Set dump_only and load_only based on arguments
         kwargs["dump_only"] = bool(serialize) and not bool(deserialize)
@@ -1952,13 +1959,11 @@ class Constant(Field):
     ``dump_only=True`` or ``load_only=True`` respectively.
 
     :param constant: The constant to return for the field attribute.
-
-    .. versionadded:: 2.0.0
     """
 
     _CHECK_ATTRIBUTE = False
 
-    def __init__(self, constant: typing.Any, **kwargs):
+    def __init__(self, constant: typing.Any, **kwargs: Unpack[_BaseFieldKwargs]):
         super().__init__(**kwargs)
         self.constant = constant
         self.load_default = constant

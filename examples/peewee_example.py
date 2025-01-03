@@ -66,7 +66,7 @@ class UserSchema(Schema):
         return data
 
     # We add a post_dump hook to add an envelope to responses
-    @post_dump(pass_many=True)
+    @post_dump(pass_collection=True)
     def wrap(self, data, many, **kwargs):
         key = "users" if many else "user"
         return {key: data}
@@ -74,13 +74,13 @@ class UserSchema(Schema):
 
 class TodoSchema(Schema):
     id = fields.Int(dump_only=True)
-    done = fields.Boolean(attribute="is_done", missing=False)
+    done = fields.Boolean(attribute="is_done", load_default=False)
     user = fields.Nested(UserSchema(exclude=("joined_on", "password")), dump_only=True)
     content = fields.Str(required=True)
     posted_on = fields.DateTime(dump_only=True)
 
     # Again, add an envelope to responses
-    @post_dump(pass_many=True)
+    @post_dump(pass_collection=True)
     def wrap(self, data, many, **kwargs):
         key = "todos" if many else "todo"
         return {key: data}
