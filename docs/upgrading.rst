@@ -57,11 +57,216 @@ If you want to use anonymous functions, you can use this helper function.
     class UserSchema(Schema):
         password = fields.String(validate=predicate(lambda x: x == "password"))
 
+Implicit field creation is removed
+**********************************
+
+In marshmallow 3, the ``fields`` and ``additional`` class Meta options allowed fields to be implicitly created via introspection of the data being serialized.
+
+In marshmallow 4.0, implicit field creation is removed to prevent conflicts with libraries
+that generate fields dynamically.
+
+.. code-block:: python
+
+    import datetime as dt
+    import dataclasses
+
+    from marshmallow import Schema, fields
+
+
+    @dataclasses.dataclass
+    class User:
+        name: str
+        birthdate: dt.date
+
+
+    # 3.x
+    class UserSchema(Schema):
+        class Meta:
+            fields = ("name", "birthdate")
+
+
+    # 4.x
+    class UserSchema(Schema):
+        name = fields.String()
+        email = fields.Date()
+
+
+To automatically generate schema fields from model classes, consider using a separate library, e.g.
+`marshmallow-sqlalchemy <https://github.com/marshmallow-code/marshmallow-sqlalchemy>`_ for SQLAlchemy models.
+
+.. code-block:: python
+
+    from marshmallow_sqlalchemy import SQLAlchemySchema, auto_field
+
+
+    class UserSchema(SQLAlchemySchema):
+        class Meta:
+            model = Author
+
+        name = auto_field()
+        birthdate = auto_field()
+
+``ordered`` is removed
+**********************
+
+The ``ordered`` class Meta option is removed, since order is already preserved by default.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # 3.x
+    class MySchema(Schema):
+        id = fields.Integer()
+
+        class Meta:
+            ordered = True
+
+
+    # 4.x
+    class MySchema(Schema):
+        id = fields.Integer()
+
+Custom ``SchemaOpts`` classes should remove the ``ordered`` argument from the constructor.
+
+.. code-block:: python
+
+    # 3.x
+    class CustomOpts(SchemaOpts):
+        def __init__(self, meta, ordered=False):
+            super().__init__(meta)
+            self.custom_option = getattr(meta, "meta", False)
+
+
+    # 4.x
+    class CustomOpts(SchemaOpts):
+        def __init__(self, meta):
+            super().__init__(meta, ordered)
+            self.custom_option = getattr(meta, "meta", False)
+
+``TimeDelta`` changes
+*********************
+
+The `TimeDelta <marshmallow.fields.TimeDelta>` field now preserves float values such that
+microseconds are included in the resulting `datetime.timedelta` object.
+
+.. code-block:: python
+
+    from marshmallow import fields
+
+    field = fields.TimeDelta()
+    value = field.deserialize(12.9)
+
+    # 3.x
+    print(value)  # => datetime.timedelta(seconds=12)
+
+    # 4.x
+    print(value)  # => datetime.timedelta(seconds=12, microseconds=900000)
+
+The ``serialization_type`` parameter has been removed. Use a custom field or cast the serialized value
+if you need to change the final output type.
+
+``pass_many`` is renamed to ``pass_collection`` in decorators
+*************************************************************
+
+The ``pass_many`` argument to `pre_load <marshmallow.decorators.pre_load>`, 
+`post_load <marshmallow.decorators.post_load>`, `pre_dump <marshmallow.decorators.pre_dump>`, 
+and `post_dump <marshmallow.decorators.post_dump>` is renamed to ``pass_collection``.
+
+The behavior is unchanged.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields, post_load
+
+
+    # 3.x
+    class MySchema(Schema):
+        name = fields.Str()
+
+        @post_dump(pass_many=True)
+        def post_dump(self, data, many, **kwargs): ...
+
+
+    # 4.x
+    class MySchema(Schema):
+        name = fields.Str()
+
+        @post_dump(pass_collection=True)
+        def post_dump(self, data, many, **kwargs): ...
+
+Rename ``schema`` to ``parent`` in ``_bind_to_schema``
+******************************************************
+
+Custom fields that define a `_bind_to_schema <marshmallow.Fields._bind_to_schema>` method should rename the `schema` argument to `parent`.
+
+.. code-block:: python
+
+    from marshmallow import fields
+
+
+    # 3.x
+    class MyField(fields.Field):
+        def _bind_to_schema(self, schema, field_name): ...
+
+
+    # 4.x
+    class MyField(fields.Field):
+        def _bind_to_schema(self, parent, field_name): ...
+
+Use standard library for parsing ISO 8601 dates, times, and datetimes
+*********************************************************************
+
+The ``from_iso_*`` utilities are removed from marshmallow in favor of using the standard library implementations.
+
+.. code-block:: python
+
+    # 3.x
+    from marshmallow.utils import from_iso_date, from_iso_time, from_iso_datetime
+
+    from_iso_date("2013-11-10")
+    from_iso_time("01:23:45")
+    from_iso_datetime("2013-11-10T01:23:45")
+
+    # 4.x
+    import datetime as dt
+
+    dt.date.fromisoformat("2013-11-10")
+    dt.time.fromisoformat("01:23:45")
+    dt.datetime.fromisoformat("2013-11-10T01:23:45")
+
+Upgrading to 3.13
++++++++++++++++++
+
+``load_default`` and ``dump_default``
++++++++++++++++++++++++++++++++++++++
+
+The ``missing`` and ``default`` parameters of fields are renamed to 
+``load_default`` and ``dump_default``, respectively.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # < 3.13
+    class MySchema(Schema):
+        name = fields.Str(missing="Monty")
+        age = fields.Int(default=42)
+
+
+    # >=3.13
+    class MySchema(Schema):
+        name = fields.Str(load_default="Monty")
+        age = fields.Int(dump_default=42)
+
+``load_default`` and ``dump_default`` are passed to the field constructor as keyword arguments.
 
 Upgrading to 3.3
 ++++++++++++++++
 
-In 3.3, `fields.Nested <marshmallow.fields.Nested>` may take a callable that returns a schema instance. 
+In 3.3, `fields.Nested <marshmallow.fields.Nested>` may take a callable that returns a schema instance.
 Use this to resolve order-of-declaration issues when schemas nest each other.
 
 .. code-block:: python
@@ -1116,7 +1321,7 @@ In marshmallow 2, it was possible to have multiple fields with the same ``attrib
 ``Field.fail`` is deprecated in favor of ``Field.make_error``
 *************************************************************
 
-`Field.fail <marshmallow.fields.Field.fail>` is deprecated. 
+`Field.fail <marshmallow.fields.Field.fail>` is deprecated.
 Use `Field.make_error <marshmallow.fields.Field.fail>`. This allows you to
 re-raise exceptions using ``raise ... from ...``.
 
