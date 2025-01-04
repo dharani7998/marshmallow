@@ -48,6 +48,29 @@ As a consequence of this change:
 
 Thanks :user:`ddelange` for the PR.
 
+- *Backwards-incompatible*: Remove schema ``context`` property. Passing a context
+  should be done using a context variable. (issue:`1826`)
+  marshmallow 4.0 provides an experimental `Context <marshmallow.experimental.context.Context>`
+  manager class that can be used both to set and retrieve the context.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+    from marshmallow.experimental.context import Context
+
+
+    def transform_name(obj):
+        return obj["name"].upper() + Context.get()["suffix"]
+
+
+    class UserSchema(Schema):
+        name = fields.Function(serialize=transform_name)
+
+
+    with Context({"suffix": "BAR"}):
+        UserSchema().dump({"name": "foo"})
+        # {'name': 'FOOBAR'}
+
 Deprecations/Removals:
 
 - *Backwards-incompatible*: Remove implicit field creation, i.e. using the ``fields`` or ``additional`` class Meta options with undeclared fields (:issue:`1356`).
