@@ -11,12 +11,13 @@ _CURRENT_CONTEXT: contextvars.ContextVar = contextvars.ContextVar("context")
 class Context(contextlib.AbstractContextManager, typing.Generic[_T]):
     def __init__(self, context: _T) -> None:
         self.context = context
+        self.token: contextvars.Token | None = None
 
     def __enter__(self) -> None:
         self.token = _CURRENT_CONTEXT.set(self.context)
 
     def __exit__(self, *args, **kwargs) -> None:
-        _CURRENT_CONTEXT.reset(self.token)
+        _CURRENT_CONTEXT.reset(typing.cast(contextvars.Token, self.token))
 
     @classmethod
     def get(cls, default=...) -> _T:
