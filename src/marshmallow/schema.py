@@ -245,7 +245,10 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         fields in the data. Use `EXCLUDE`, `INCLUDE` or `RAISE`.
 
     .. versionchanged:: 3.0.0
-        `prefix` parameter removed.
+        Remove ``prefix`` parameter.
+
+    .. versionchanged:: 4.0.0
+        Remove ``context`` parameter.
     """
 
     TYPE_MAPPING = {

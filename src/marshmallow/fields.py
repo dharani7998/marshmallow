@@ -151,6 +151,9 @@ class Field(FieldABC):
 
     .. versionchanged:: 3.13.0
         Replace ``missing`` and ``default`` parameters with ``load_default`` and ``dump_default``.
+
+    .. versionchanged:: 4.0.0
+        Remove ``context`` property.
     """
 
     # Some fields, such as Method fields and Function fields, are not expected
@@ -1919,6 +1922,9 @@ class Function(Field):
 
     .. versionchanged:: 3.0.0a1
         Removed ``func`` parameter.
+
+    .. versionchanged:: 4.0.0
+        Don't pass context to serialization and deserialization functions.
     """
 
     _CHECK_ATTRIBUTE = False
