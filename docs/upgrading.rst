@@ -58,6 +58,49 @@ If you want to use anonymous functions, you can use this helper function.
         password = fields.String(validate=predicate(lambda x: x == "password"))
 
 
+Schema Context is Removed
+*************************
+
+The feature allowing to pass a context to the schema has been removed. Users should
+use `contextvars` for that.
+
+marshmallow 4.0 provides an experimental `Context <marshmallow.experimental.context.Context>`
+manager class that can be used both to set and retrieve the context.
+
+.. code-block:: python
+
+    # 3.x
+    from marshmallow import Schema, fields
+
+
+    class UserSchema(Schema):
+        name = fields.Function(
+            serialize=lambda obj, context: obj["name"].upper() + context["suffix"]
+        )
+
+
+    user_schema = UserSchema()
+    user_schema.context = {"suffix": "BAR"}
+    user_schema.dump({"name": "foo"})
+    # {'name': 'FOOBAR'}
+
+    # 4.x
+    from marshmallow import Schema, fields
+    from marshmallow.experimental.context import Context
+
+
+    def transform_name(obj):
+        return obj["name"].upper() + Context.get()["suffix"]
+
+
+    class UserSchema(Schema):
+        name = fields.Function(serialize=transform_name)
+
+
+    with Context({"suffix": "BAR"}):
+        UserSchema().dump({"name": "foo"})
+        # {'name': 'FOOBAR'}
+
 Upgrading to 3.3
 ++++++++++++++++
 

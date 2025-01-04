@@ -55,39 +55,6 @@ In this example, a single schema produced three different outputs! The dynamic n
 .. _Django REST Framework: https://www.django-rest-framework.org/
 .. _Flask-RESTful: https://flask-restful.readthedocs.io/
 
-
-Context-aware serialization.
-----------------------------
-
-Marshmallow schemas can modify their output based on the context in which they are used. Field objects have access to a ``context`` dictionary that can be changed at runtime.
-
-Here's a simple example that shows how a `Schema <marshmallow.Schema>` can anonymize a person's name when a boolean is set on the context.
-
-.. code-block:: python
-
-    class PersonSchema(Schema):
-        id = fields.Integer()
-        name = fields.Method("get_name")
-
-        def get_name(self, person, context):
-            if context.get("anonymize"):
-                return "<anonymized>"
-            return person.name
-
-
-    person = Person(name="Monty")
-    schema = PersonSchema()
-    schema.dump(person)  # {'id': 143, 'name': 'Monty'}
-
-    # In a different context, anonymize the name
-    schema.context["anonymize"] = True
-    schema.dump(person)  # {'id': 143, 'name': '<anonymized>'}
-
-
-.. seealso::
-
-    See the relevant section of the :ref:`usage guide <adding-context>` to learn more about context-aware serialization.
-
 Advanced schema nesting.
 ------------------------
 

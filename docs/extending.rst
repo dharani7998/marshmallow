@@ -461,19 +461,6 @@ Our application schemas can now inherit from our custom schema class.
     result = ser.dump(user)
     result  # {"user": {"name": "Keith", "email": "keith@stones.com"}}
 
-Using Context
--------------
-
-The ``context`` attribute of a `Schema` is a general-purpose store for extra information that may be needed for (de)serialization. It may be used in both ``Schema`` and ``Field`` methods.
-
-.. code-block:: python
-
-    schema = UserSchema()
-    # Make current HTTP request available to
-    # custom fields, schema methods, schema validators, etc.
-    schema.context["request"] = request
-    schema.dump(user)
-
 Custom Error Messages
 ---------------------
 

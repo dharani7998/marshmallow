@@ -95,40 +95,6 @@ Both :class:`Function <marshmallow.fields.Function>` and :class:`Method <marshma
     result = schema.load({"balance": "100.00"})
     result["balance"]  # => 100.0
 
-.. _adding-context:
-
-Adding Context to `Method` and `Function` Fields
-------------------------------------------------
-
-A :class:`Function <marshmallow.fields.Function>` or :class:`Method <marshmallow.fields.Method>` field may need information about its environment to know how to serialize a value.
-
-In these cases, you can set the ``context`` attribute (a dictionary) of a `Schema`. :class:`Function <marshmallow.fields.Function>` and :class:`Method <marshmallow.fields.Method>` fields will have access to this dictionary.
-
-As an example, you might want your ``UserSchema`` to output whether or not a ``User`` is the author of a ``Blog`` or whether a certain word appears in a ``Blog's`` title.
-
-.. code-block:: python
-
-    class UserSchema(Schema):
-        name = fields.String()
-        # Function fields optionally receive context argument
-        is_author = fields.Function(lambda user, context: user == context["blog"].author)
-        likes_bikes = fields.Method("writes_about_bikes")
-
-        def writes_about_bikes(self, user):
-            return "bicycle" in self.context["blog"].title.lower()
-
-
-    schema = UserSchema()
-
-    user = User("Freddie Mercury", "fred@queen.com")
-    blog = Blog("Bicycle Blog", author=user)
-
-    schema.context = {"blog": blog}
-    result = schema.dump(user)
-    result["is_author"]  # => True
-    result["likes_bikes"]  # => True
-
-
 Customizing Error Messages
 --------------------------
 
