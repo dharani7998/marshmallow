@@ -65,6 +65,18 @@ Previously-deprecated API have been removed, including:
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 - Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
 
+3.24.0 (unreleased)
+*******************
+
+Features:
+
+- Typing: Replace type comments with inline typings (:pr:`2718`).
+
+Bug fixes:
+
+- Typing: Fix type hint for ``nested`` parameter of `Nested <marshmallow.fields.Nested>`.
+
+
 3.23.3 (2025-01-03)
 *******************
 

@@ -26,7 +26,7 @@ else:
     MonkeyPatch.patch_fromisoformat()
 
 from marshmallow import class_registry, types, utils, validate
-from marshmallow.base import FieldABC, SchemaABC
+from marshmallow.base import FieldABC
 from marshmallow.exceptions import (
     FieldInstanceResolutionError,
     StringNotCollectionError,
@@ -43,7 +43,7 @@ from marshmallow.utils import (
 from marshmallow.validate import And, Length
 
 if typing.TYPE_CHECKING:
-    from marshmallow.schema import SchemaMeta
+    from marshmallow.schema import Schema, SchemaMeta
 
 
 __all__ = [
@@ -216,7 +216,7 @@ class Field(FieldABC):
         metadata = metadata or {}
         self.metadata = metadata
         # Collect default error message from self and parent classes
-        messages = {}  # type: dict[str, str]
+        messages: dict[str, str] = {}
         for cls in reversed(self.__class__.__mro__):
             messages.update(getattr(cls, "default_error_messages", {}))
         messages.update(error_messages or {})
@@ -461,13 +461,11 @@ class Nested(Field):
     def __init__(
         self,
         nested: (
-            SchemaABC
+            Schema
             | SchemaMeta
             | str
-            | dict[str, Field | type[Field]]
-            | typing.Callable[
-                [], SchemaABC | SchemaMeta | dict[str, Field | type[Field]]
-            ]
+            | dict[str, Field]
+            | typing.Callable[[], Schema | SchemaMeta | dict[str, Field]]
         ),
         *,
         only: types.StrSequenceOrSet | None = None,
@@ -488,11 +486,11 @@ class Nested(Field):
         self.exclude = exclude
         self.many = many
         self.unknown = unknown
-        self._schema = None  # Cached Schema instance
+        self._schema: Schema | None = None  # Cached Schema instance
         super().__init__(**kwargs)
 
     @property
-    def schema(self):
+    def schema(self) -> Schema:
         """The nested Schema object.
 
         .. versionchanged:: 1.0.0
@@ -504,18 +502,18 @@ class Nested(Field):
             if callable(self.nested) and not isinstance(self.nested, type):
                 nested = self.nested()
             else:
-                nested = self.nested
-            if isinstance(nested, dict):
-                # defer the import of `marshmallow.schema` to avoid circular imports
-                from marshmallow.schema import Schema
+                nested = typing.cast("Schema", self.nested)
+            # defer the import of `marshmallow.schema` to avoid circular imports
+            from marshmallow.schema import Schema
 
+            if isinstance(nested, dict):
                 nested = Schema.from_dict(nested)
 
-            if isinstance(nested, SchemaABC):
+            if isinstance(nested, Schema):
                 self._schema = copy.copy(nested)
                 self._schema.context.update(context)
                 # Respect only and exclude passed from parent and re-initialize fields
-                set_class = self._schema.set_class
+                set_class = typing.cast(type[set], self._schema.set_class)
                 if self.only is not None:
                     if self._schema.only is not None:
                         original = self._schema.only
@@ -527,15 +525,15 @@ class Nested(Field):
                     self._schema.exclude = set_class(self.exclude) | set_class(original)
                 self._schema._init_fields()
             else:
-                if isinstance(nested, type) and issubclass(nested, SchemaABC):
-                    schema_class = nested
+                if isinstance(nested, type) and issubclass(nested, Schema):
+                    schema_class: type[Schema] = nested
                 elif not isinstance(nested, (str, bytes)):
                     raise ValueError(
                         "`Nested` fields must be passed a "
                         f"`Schema`, not {nested.__class__}."
                     )
                 else:
-                    schema_class = class_registry.get_class(nested)
+                    schema_class = class_registry.get_class(nested, all=False)
                 self._schema = schema_class(
                     many=self.many,
                     only=self.only,
@@ -618,7 +616,7 @@ class Pluck(Nested):
 
     def __init__(
         self,
-        nested: SchemaABC | SchemaMeta | str | typing.Callable[[], SchemaABC],
+        nested: Schema | SchemaMeta | str | typing.Callable[[], Schema],
         field_name: str,
         **kwargs: Unpack[_BaseFieldKwargs],
     ):
@@ -851,7 +849,7 @@ class Number(Field):
     :param kwargs: The same keyword arguments that :class:`Field` receives.
     """
 
-    num_type = float  # type: typing.Type
+    num_type: type = float
 
     #: Default error messages.
     default_error_messages = {
@@ -888,7 +886,7 @@ class Number(Field):
         """Return a string if `self.as_string=True`, otherwise return this field's `num_type`."""
         if value is None:
             return None
-        ret = self._format_num(value)  # type: _T
+        ret: _T = self._format_num(value)
         return self._to_string(ret) if self.as_string else ret
 
     def _deserialize(self, value, attr, data, **kwargs) -> _T | None:
@@ -1157,23 +1155,23 @@ class DateTime(Field):
         Add timestamp as a format.
     """
 
-    SERIALIZATION_FUNCS = {
+    SERIALIZATION_FUNCS: dict[str, typing.Callable[[typing.Any], str | float]] = {
         "iso": utils.isoformat,
         "iso8601": utils.isoformat,
         "rfc": utils.rfcformat,
         "rfc822": utils.rfcformat,
         "timestamp": utils.timestamp,
         "timestamp_ms": utils.timestamp_ms,
-    }  # type: dict[str, typing.Callable[[typing.Any], str | float]]
+    }
 
-    DESERIALIZATION_FUNCS = {
+    DESERIALIZATION_FUNCS: dict[str, typing.Callable[[str], typing.Any]] = {
         "iso": dt.datetime.fromisoformat,
         "iso8601": dt.datetime.fromisoformat,
         "rfc": utils.from_rfc,
         "rfc822": utils.from_rfc,
         "timestamp": utils.from_timestamp,
         "timestamp_ms": utils.from_timestamp_ms,
-    }  # type: dict[str, typing.Callable[[str], typing.Any]]
+    }
 
     DEFAULT_FORMAT = "iso"
 
@@ -1673,7 +1671,7 @@ class IP(Field):
 
     default_error_messages = {"invalid_ip": "Not a valid IP address."}
 
-    DESERIALIZATION_CLASS = None  # type: typing.Optional[typing.Type]
+    DESERIALIZATION_CLASS: type | None = None
 
     def __init__(self, *, exploded: bool = False, **kwargs: Unpack[_BaseFieldKwargs]):
         super().__init__(**kwargs)
@@ -1737,7 +1735,7 @@ class IPInterface(Field):
 
     default_error_messages = {"invalid_ip_interface": "Not a valid IP interface."}
 
-    DESERIALIZATION_CLASS = None  # type: typing.Optional[typing.Type]
+    DESERIALIZATION_CLASS: type | None = None
 
     def __init__(self, *, exploded: bool = False, **kwargs: Unpack[_BaseFieldKwargs]):
         super().__init__(**kwargs)
