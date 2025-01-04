@@ -53,6 +53,7 @@ Deprecations/Removals:
 - *Backwards-incompatible*: Remove implicit field creation, i.e. using the ``fields`` or ``additional`` class Meta options with undeclared fields (:issue:`1356`).
 - The `ordered` class Meta option is removed  (:issue:`2146`). Field order is already preserved by default.
   Set `Schema.dict_class` to `OrderedDict` to maintain the previous behavior.
+- The `marshmallow.base` module is removed (:pr:`2722`).
 
 Previously-deprecated API have been removed, including:
 
@@ -75,7 +76,7 @@ Features:
 
 Bug fixes:
 
-- Typing: Fix type hint for ``nested`` parameter of `Nested <marshmallow.fields.Nested>`.
+- Typing: Fix type hint for ``nested`` parameter of `Nested <marshmallow.fields.Nested>` (:pr:`2721`).
 
 
 3.23.3 (2025-01-03)
