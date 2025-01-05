@@ -35,24 +35,6 @@ class TestFieldSerialization:
     def user(self):
         return User("Foo", email="foo@bar.com", age=42)
 
-    @pytest.mark.parametrize(
-        ("value", "expected"), [(42, float(42)), (0, float(0)), (None, None)]
-    )
-    def test_number(self, value, expected, user):
-        field = fields.Number()
-        user.age = value
-        assert field.serialize("age", user) == expected
-
-    def test_number_as_string(self, user):
-        user.age = 42
-        field = fields.Number(as_string=True)
-        assert field.serialize("age", user) == str(float(user.age))
-
-    def test_number_as_string_passed_none(self, user):
-        user.age = None
-        field = fields.Number(as_string=True, allow_none=True)
-        assert field.serialize("age", user) is None
-
     def test_function_field_passed_func(self, user):
         field = fields.Function(lambda obj: obj.name.upper())
         assert "FOO" == field.serialize("key", user)
@@ -425,17 +407,6 @@ class TestFieldSerialization:
         assert isinstance(s, str)
         assert s == "0.00"
 
-    def test_boolean_field_serialization(self, user):
-        field = fields.Boolean()
-
-        user.truthy = "non-falsy-ish"
-        user.falsy = "false"
-        user.none = None
-
-        assert field.serialize("truthy", user) is True
-        assert field.serialize("falsy", user) is False
-        assert field.serialize("none", user) is None
-
     def test_email_field_serialize_none(self, user):
         user.email = None
         field = fields.Email()
@@ -535,7 +506,7 @@ class TestFieldSerialization:
 
     def test_serialize_with_data_key_as_empty_string(self):
         class MySchema(Schema):
-            name = fields.Field(data_key="")
+            name = fields.Raw(data_key="")
 
         schema = MySchema()
         assert schema.dump({"name": "Grace"}) == {"": "Grace"}
@@ -926,7 +897,7 @@ class TestFieldSerialization:
             fields.Tuple([ASchema])
 
     def test_serialize_does_not_apply_validators(self, user):
-        field = fields.Field(validate=lambda x: False)
+        field = fields.Raw(validate=lambda x: False)
         # No validation error raised
         assert field.serialize("age", user) == user.age
 

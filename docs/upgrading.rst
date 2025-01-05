@@ -8,6 +8,73 @@ This section documents migration paths to new releases.
 Upgrading to 4.0
 ++++++++++++++++
 
+``Field`` usage
+***************
+
+`Field <marshmallow.fields.Field>` is the base class for all fields and should not be used directly within schemas.
+Only use subclasses of `Field <marshmallow.fields.Field>` in your schemas.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # 3.x
+    class UserSchema(Schema):
+        name = fields.Field()
+
+
+    # 4.x
+    class UserSchema(Schema):
+        name = fields.String()
+
+`Field <marshmallow.fields.Field>` is a generic class with a type argument.
+When defining a custom field, the type argument should be used to specify the internal type.
+
+.. code-block:: python
+
+    from marshmallow import fields
+
+
+    class PinCode(fields.Field[list[int]]):
+        """Field that serializes to a string of numbers and deserializes
+        to a list of numbers.
+        """
+
+        def _serialize(self, value, attr, obj, **kwargs):
+            if value is None:
+                return ""
+            return "".join(str(d) for d in value)
+
+        # The return type is inferred to be list[int]
+        def _deserialize(self, value, attr, data, **kwargs):
+            try:
+                return [int(c) for c in value]
+            except ValueError as error:
+                raise ValidationError("Pin codes must contain only digits.") from error
+
+``Number`` and ``Mapping`` fields as base classes
+*************************************************
+
+`Number <marshmallow.fields.Number>` and `Mapping <marshmallow.fields.Mapping>` are bases classes that should not be used within schemas.
+Use their subclasses instead.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # 3.x
+    class PackageSchema(Schema):
+        revision = fields.Number()
+        dependencies = fields.Mapping()
+
+
+    # 4.x
+    class PackageSchema(Schema):
+        revision = fields.Integer()
+        dependencies = fields.Dict()
+
 Validators must raise a ValidationError
 ***************************************
 
@@ -215,8 +282,8 @@ Custom fields that define a `_bind_to_schema <marshmallow.Fields._bind_to_schema
     class MyField(fields.Field):
         def _bind_to_schema(self, parent, field_name): ...
 
-Use standard library for parsing ISO 8601 dates, times, and datetimes
-*********************************************************************
+Use standard library functions for parsing ISO 8601 dates, times, and datetimes
+*******************************************************************************
 
 The ``from_iso_*`` utilities are removed from marshmallow in favor of using the standard library implementations.
 
@@ -1230,8 +1297,8 @@ The ``prefix`` parameter of ``Schema`` is removed. The same feature can be achie
 
     # 2.x
     class MySchema(Schema):
-        f1 = fields.Field()
-        f2 = fields.Field()
+        f1 = fields.Raw()
+        f2 = fields.Raw()
 
 
     MySchema(prefix="pre_").dump({"f1": "one", "f2": "two"})
@@ -1240,8 +1307,8 @@ The ``prefix`` parameter of ``Schema`` is removed. The same feature can be achie
 
     # 3.x
     class MySchema(Schema):
-        f1 = fields.Field()
-        f2 = fields.Field()
+        f1 = fields.Raw()
+        f2 = fields.Raw()
 
         @post_dump
         def prefix_usr(self, data):
@@ -1285,10 +1352,10 @@ In marshmallow 2, it was possible to have multiple fields with the same ``attrib
 
     # 2.x
     class MySchema(Schema):
-        f1 = fields.Field()
-        f2 = fields.Field(attribute="f1")
-        f3 = fields.Field(attribute="f5")
-        f4 = fields.Field(attribute="f5")
+        f1 = fields.Raw()
+        f2 = fields.Raw(attribute="f1")
+        f3 = fields.Raw(attribute="f5")
+        f4 = fields.Raw(attribute="f5")
 
 
     MySchema()
@@ -1297,10 +1364,10 @@ In marshmallow 2, it was possible to have multiple fields with the same ``attrib
 
     # 3.x
     class MySchema(Schema):
-        f1 = fields.Field()
-        f2 = fields.Field(attribute="f1")
-        f3 = fields.Field(attribute="f5")
-        f4 = fields.Field(attribute="f5")
+        f1 = fields.Raw()
+        f2 = fields.Raw(attribute="f1")
+        f3 = fields.Raw(attribute="f5")
+        f4 = fields.Raw(attribute="f5")
 
 
     MySchema()
@@ -1308,10 +1375,10 @@ In marshmallow 2, it was possible to have multiple fields with the same ``attrib
 
 
     class MySchema(Schema):
-        f1 = fields.Field()
-        f2 = fields.Field(attribute="f1", dump_only=True)
-        f3 = fields.Field(attribute="f5")
-        f4 = fields.Field(attribute="f5", dump_only=True)
+        f1 = fields.Raw()
+        f2 = fields.Raw(attribute="f1", dump_only=True)
+        f3 = fields.Raw(attribute="f5")
+        f4 = fields.Raw(attribute="f5", dump_only=True)
 
 
     MySchema()
