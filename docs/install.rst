@@ -3,9 +3,7 @@
 Installation
 ============
 
-**marshmallow** has no external dependencies other than the `packaging` library.
-
-Installing/Upgrading from the PyPI
+Installing/upgrading from the PyPI
 ----------------------------------
 
 To install the latest stable version from the PyPI:
@@ -20,7 +18,7 @@ To install the latest pre-release version from the PyPI:
 
     $ pip install -U marshmallow --pre
 
-Get the Bleeding Edge Version
+Get the bleeding edge version
 -----------------------------
 
 To get the latest development version of marshmallow, run

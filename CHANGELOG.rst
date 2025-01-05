@@ -76,6 +76,7 @@ Deprecations/Removals:
 - *Backwards-incompatible*: Remove implicit field creation, i.e. using the ``fields`` or ``additional`` class Meta options with undeclared fields (:issue:`1356`).
 - The `ordered` class Meta option is removed  (:issue:`2146`). Field order is already preserved by default.
   Set `Schema.dict_class` to `OrderedDict` to maintain the previous behavior.
+- The `marshmallow.base` module is removed (:pr:`2722`).
 
 Previously-deprecated API have been removed, including:
 
@@ -86,6 +87,20 @@ Previously-deprecated API have been removed, including:
 - Passing `"self"` to `fields.Nested` (deprecated in 3.3.0). Use a callable instead.
 - `json_module` class Meta option (deprecated in 3.0.0b3). Use `render_module` instead.
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
+- Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
+
+3.24.0 (unreleased)
+*******************
+
+Features:
+
+- Typing: Improve typings in `marshmallow.fields` (:pr:`2723`).
+- Typing: Replace type comments with inline typings (:pr:`2718`).
+
+Bug fixes:
+
+- Typing: Fix type hint for ``nested`` parameter of `Nested <marshmallow.fields.Nested>` (:pr:`2721`).
+
 
 3.23.3 (2025-01-03)
 *******************
@@ -1139,7 +1154,7 @@ Features:
   The ``strict`` parameter is removed.
 - *Backwards-incompatible*: ``Schema().load`` and ``Schema().dump`` return ``data`` instead of a
   ``(data, errors)`` tuple (:issue:`598`).
-- *Backwards-incomaptible*: ``Schema().load(None)`` raises a
+- *Backwards-incompatible*: ``Schema().load(None)`` raises a
   ``ValidationError`` (:issue:`511`).
 
 See :ref:`upgrading_3_0` for a guide on updating your code.
@@ -1342,7 +1357,7 @@ Bug fixes:
   This is a backport of the fix in :pr:`857`. Thanks :user:`cristi23` for the
   thorough bug report and the PR.
 
-Deprecation/Removal:
+Deprecation/Removals:
 
 - Python 2.6 is no longer officially supported (:issue:`1274`).
 

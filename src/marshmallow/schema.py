@@ -13,7 +13,7 @@ from abc import ABCMeta
 from collections import defaultdict
 from collections.abc import Mapping
 
-from marshmallow import base, class_registry, types
+from marshmallow import class_registry, types
 from marshmallow import fields as ma_fields
 from marshmallow.decorators import (
     POST_DUMP,
@@ -47,7 +47,7 @@ def _get_fields(attrs):
     return [
         (field_name, field_value)
         for field_name, field_value in attrs.items()
-        if is_instance_or_subclass(field_value, base.FieldABC)
+        if is_instance_or_subclass(field_value, ma_fields.Field)
     ]
 
 
@@ -140,7 +140,7 @@ class SchemaMeta(ABCMeta):
         """
         mro = inspect.getmro(cls)
 
-        hooks = defaultdict(list)  # type: dict[str, list[tuple[str, bool, dict]]]
+        hooks: dict[str, list[tuple[str, bool, dict]]] = defaultdict(list)
 
         for attr_name in dir(cls):
             # Need to look up the actual descriptor, not whatever might be
@@ -160,7 +160,9 @@ class SchemaMeta(ABCMeta):
                 continue
 
             try:
-                hook_config = attr.__marshmallow_hook__  # type: dict[str, list[tuple[bool, dict]]]
+                hook_config: dict[str, list[tuple[bool, dict]]] = (
+                    attr.__marshmallow_hook__
+                )
             except AttributeError:
                 pass
             else:
@@ -197,7 +199,7 @@ class SchemaOpts:
         self.many = getattr(meta, "many", False)
 
 
-class Schema(base.SchemaABC, metaclass=SchemaMeta):
+class Schema(metaclass=SchemaMeta):
     """Base schema class with which to define custom schemas.
 
     Example usage:
@@ -251,7 +253,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         Remove ``context`` parameter.
     """
 
-    TYPE_MAPPING = {
+    TYPE_MAPPING: dict[type, type[ma_fields.Field]] = {
         str: ma_fields.String,
         bytes: ma_fields.String,
         dt.datetime: ma_fields.DateTime,
@@ -266,24 +268,24 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         dt.date: ma_fields.Date,
         dt.timedelta: ma_fields.TimeDelta,
         decimal.Decimal: ma_fields.Decimal,
-    }  # type: dict[type, typing.Type[ma_fields.Field]]
+    }
     #: Overrides for default schema-level error messages
-    error_messages = {}  # type: dict[str, str]
+    error_messages: dict[str, str] = {}
 
-    _default_error_messages = {
+    _default_error_messages: dict[str, str] = {
         "type": "Invalid input type.",
         "unknown": "Unknown field.",
-    }  # type: dict[str, str]
+    }
 
-    OPTIONS_CLASS = SchemaOpts  # type: type
+    OPTIONS_CLASS: type = SchemaOpts
 
     set_class = OrderedSet
     dict_class = dict  # type: type[dict]
 
     # These get set by SchemaMeta
-    opts = None  # type: SchemaOpts
-    _declared_fields = {}  # type: dict[str, ma_fields.Field]
-    _hooks = {}  # type: dict[str, list[tuple[str, bool, dict]]]
+    opts: SchemaOpts
+    _declared_fields: dict[str, ma_fields.Field] = {}
+    _hooks: dict[str, list[tuple[str, bool, dict]]] = {}
 
     class Meta:
         """Options object for a Schema.
@@ -355,9 +357,9 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         )
         self._normalize_nested_options()
         #: Dictionary mapping field_names -> :class:`Field` objects
-        self.fields = {}  # type: dict[str, ma_fields.Field]
-        self.load_fields = {}  # type: dict[str, ma_fields.Field]
-        self.dump_fields = {}  # type: dict[str, ma_fields.Field]
+        self.fields: dict[str, ma_fields.Field] = {}
+        self.load_fields: dict[str, ma_fields.Field] = {}
+        self.dump_fields: dict[str, ma_fields.Field] = {}
         self._init_fields()
         messages = {}
         messages.update(self._default_error_messages)
@@ -778,7 +780,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
         :return: Deserialized data
         """
         error_store = ErrorStore()
-        errors = {}  # type: dict[str, list[str]]
+        errors: dict[str, list[str]] = {}
         many = self.many if many is None else bool(many)
         unknown = (
             self.unknown
@@ -795,7 +797,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
                 )
             except ValidationError as err:
                 errors = err.normalized_messages()
-                result = None  # type: list | dict | None
+                result: list | dict | None = None
         else:
             processed_data = data
         if not errors:
@@ -985,7 +987,7 @@ class Schema(base.SchemaABC, metaclass=SchemaMeta):
             # Field declared as a class, not an instance. Ignore type checking because
             # we handle unsupported arg types, i.e. this is dead code from
             # the type checker's perspective.
-            if isinstance(field_obj, type) and issubclass(field_obj, base.FieldABC):
+            if isinstance(field_obj, type) and issubclass(field_obj, ma_fields.Field):
                 msg = (
                     f'Field for "{field_name}" must be declared as a '
                     "Field instance, not a class. "

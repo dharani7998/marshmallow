@@ -8,9 +8,6 @@ import typing
 from collections.abc import Mapping
 from email.utils import format_datetime, parsedate_to_datetime
 
-from marshmallow.base import FieldABC
-from marshmallow.exceptions import FieldInstanceResolutionError
-
 EXCLUDE = "exclude"
 INCLUDE = "include"
 RAISE = "raise"
@@ -239,21 +236,6 @@ def callable_or_raise(obj):
 
 def _signature(func: typing.Callable) -> list[str]:
     return list(inspect.signature(func).parameters.keys())
-
-
-def resolve_field_instance(cls_or_instance):
-    """Return a Schema instance from a Schema class or instance.
-
-    :param type|Schema cls_or_instance: Marshmallow Schema class or instance.
-    """
-    if isinstance(cls_or_instance, type):
-        if not issubclass(cls_or_instance, FieldABC):
-            raise FieldInstanceResolutionError
-        return cls_or_instance()
-    else:
-        if not isinstance(cls_or_instance, FieldABC):
-            raise FieldInstanceResolutionError
-        return cls_or_instance
 
 
 def timedelta_to_microseconds(value: dt.timedelta) -> int:
