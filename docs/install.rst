@@ -20,7 +20,7 @@ To install the latest pre-release version from the PyPI:
 
     $ pip install -U marshmallow --pre
 
-Get the Bleeding Edge Version
+Get the bleeding edge version
 -----------------------------
 
 To get the latest development version of marshmallow, run
