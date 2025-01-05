@@ -85,16 +85,6 @@ class TestFieldSerialization:
         field = fields.Function(deserialize=lambda obj: None)
         assert field.load_only
 
-    def test_function_field_passed_serialize_with_context(self, user, monkeypatch):
-        class Parent(Schema):
-            pass
-
-        field = fields.Function(
-            serialize=lambda obj, context: obj.name.upper() + context["key"]
-        )
-        field.parent = Parent(context={"key": "BAR"})
-        assert "FOOBAR" == field.serialize("key", user)
-
     def test_function_field_passed_uncallable_object(self):
         with pytest.raises(TypeError):
             fields.Function("uncallable")

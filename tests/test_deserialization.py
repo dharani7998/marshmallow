@@ -7,7 +7,14 @@ from unittest.mock import patch
 
 import pytest
 
-from marshmallow import EXCLUDE, INCLUDE, RAISE, Schema, fields, validate
+from marshmallow import (
+    EXCLUDE,
+    INCLUDE,
+    RAISE,
+    Schema,
+    fields,
+    validate,
+)
 from marshmallow.exceptions import ValidationError
 from tests.base import (
     ALL_FIELDS,
@@ -993,17 +1000,6 @@ class TestFieldDeserialization:
     def test_function_field_deserialization_with_callable(self):
         field = fields.Function(lambda x: None, deserialize=lambda val: val.upper())
         assert field.deserialize("foo") == "FOO"
-
-    def test_function_field_deserialization_with_context(self):
-        class Parent(Schema):
-            pass
-
-        field = fields.Function(
-            lambda x: None,
-            deserialize=lambda val, context: val.upper() + context["key"],
-        )
-        field.parent = Parent(context={"key": "BAR"})
-        assert field.deserialize("foo") == "FOOBAR"
 
     def test_function_field_passed_deserialize_only_is_load_only(self):
         field = fields.Function(deserialize=lambda val: val.upper())

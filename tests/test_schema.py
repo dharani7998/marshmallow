@@ -350,15 +350,13 @@ def test_nested_on_bind_field_hook():
             bar = fields.Str()
 
             def on_bind_field(self, field_name, field_obj):
-                field_obj.metadata["fname"] = self.context["fname"]
+                assert field_obj.parent is self
+                field_obj.metadata["fname"] = field_name
 
         foo = fields.Nested(NestedSchema)
 
-    schema1 = MySchema(context={"fname": "foobar"})
-    schema2 = MySchema(context={"fname": "quxquux"})
-
-    assert schema1.fields["foo"].schema.fields["bar"].metadata["fname"] == "foobar"
-    assert schema2.fields["foo"].schema.fields["bar"].metadata["fname"] == "quxquux"
+    schema = MySchema()
+    assert schema.fields["foo"].schema.fields["bar"].metadata["fname"] == "bar"
 
 
 class TestValidate:
@@ -2154,153 +2152,6 @@ def test_deserialization_with_required_field_and_custom_validator():
     errors = excinfo.value.messages
     assert "color" in errors
     assert "Color must be red or blue" in errors["color"]
-
-
-class UserContextSchema(Schema):
-    is_owner = fields.Method("get_is_owner")
-    is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
-
-    def get_is_owner(self, user):
-        return self.context["blog"].user.name == user.name
-
-
-class TestContext:
-    def test_context_method(self):
-        owner = User("Joe")
-        blog = Blog(title="Joe Blog", user=owner)
-        context = {"blog": blog}
-        serializer = UserContextSchema()
-        serializer.context = context
-        data = serializer.dump(owner)
-        assert data["is_owner"] is True
-        nonowner = User("Fred")
-        data = serializer.dump(nonowner)
-        assert data["is_owner"] is False
-
-    def test_context_method_function(self):
-        owner = User("Fred")
-        blog = Blog("Killer Queen", user=owner)
-        collab = User("Brian")
-        blog.collaborators.append(collab)
-        context = {"blog": blog}
-        serializer = UserContextSchema()
-        serializer.context = context
-        data = serializer.dump(collab)
-        assert data["is_collab"] is True
-        noncollab = User("Foo")
-        data = serializer.dump(noncollab)
-        assert data["is_collab"] is False
-
-    def test_function_field_raises_error_when_context_not_available(self):
-        # only has a function field
-        class UserFunctionContextSchema(Schema):
-            is_collab = fields.Function(lambda user, ctx: user in ctx["blog"])
-
-        owner = User("Joe")
-        serializer = UserFunctionContextSchema()
-        # no context
-        serializer.context = None
-        msg = "No context available for Function field {!r}".format("is_collab")
-        with pytest.raises(ValidationError, match=msg):
-            serializer.dump(owner)
-
-    def test_function_field_handles_bound_serializer(self):
-        class SerializeA:
-            def __call__(self, value):
-                return "value"
-
-        serialize = SerializeA()
-
-        # only has a function field
-        class UserFunctionContextSchema(Schema):
-            is_collab = fields.Function(serialize)
-
-        owner = User("Joe")
-        serializer = UserFunctionContextSchema()
-        # no context
-        serializer.context = None
-        data = serializer.dump(owner)
-        assert data["is_collab"] == "value"
-
-    def test_fields_context(self):
-        class CSchema(Schema):
-            name = fields.String()
-
-        ser = CSchema()
-        ser.context["foo"] = 42
-
-        assert ser.fields["name"].context == {"foo": 42}
-
-    def test_nested_fields_inherit_context(self):
-        class InnerSchema(Schema):
-            likes_bikes = fields.Function(lambda obj, ctx: "bikes" in ctx["info"])
-
-        class CSchema(Schema):
-            inner = fields.Nested(InnerSchema)
-
-        ser = CSchema()
-        ser.context["info"] = "i like bikes"
-        obj = {"inner": {}}
-        result = ser.dump(obj)
-        assert result["inner"]["likes_bikes"] is True
-
-    # Regression test for https://github.com/marshmallow-code/marshmallow/issues/820
-    def test_nested_list_fields_inherit_context(self):
-        class InnerSchema(Schema):
-            foo = fields.Raw()
-
-            @validates("foo")
-            def validate_foo(self, value):
-                if "foo_context" not in self.context:
-                    raise ValidationError("Missing context")
-
-        class OuterSchema(Schema):
-            bars = fields.List(fields.Nested(InnerSchema()))
-
-        inner = InnerSchema()
-        inner.context["foo_context"] = "foo"
-        assert inner.load({"foo": 42})
-
-        outer = OuterSchema()
-        outer.context["foo_context"] = "foo"
-        assert outer.load({"bars": [{"foo": 42}]})
-
-    # Regression test for https://github.com/marshmallow-code/marshmallow/issues/820
-    def test_nested_dict_fields_inherit_context(self):
-        class InnerSchema(Schema):
-            foo = fields.Raw()
-
-            @validates("foo")
-            def validate_foo(self, value):
-                if "foo_context" not in self.context:
-                    raise ValidationError("Missing context")
-
-        class OuterSchema(Schema):
-            bars = fields.Dict(values=fields.Nested(InnerSchema()))
-
-        inner = InnerSchema()
-        inner.context["foo_context"] = "foo"
-        assert inner.load({"foo": 42})
-
-        outer = OuterSchema()
-        outer.context["foo_context"] = "foo"
-        assert outer.load({"bars": {"test": {"foo": 42}}})
-
-    # Regression test for https://github.com/marshmallow-code/marshmallow/issues/1404
-    def test_nested_field_with_unpicklable_object_in_context(self):
-        class Unpicklable:
-            def __deepcopy__(self, _):
-                raise NotImplementedError
-
-        class InnerSchema(Schema):
-            foo = fields.Raw()
-
-        class OuterSchema(Schema):
-            inner = fields.Nested(InnerSchema(context={"unp": Unpicklable()}))
-
-        outer = OuterSchema()
-        obj = {"inner": {"foo": 42}}
-        assert outer.dump(obj)
 
 
 def test_serializer_can_specify_nested_object_as_attribute(blog):

@@ -124,6 +124,58 @@ If you want to use anonymous functions, you can use this helper function.
     class UserSchema(Schema):
         password = fields.String(validate=predicate(lambda x: x == "password"))
 
+New context API
+***************
+
+Passing context to `Schema <marshmallow.schema.Schema>` classes is no longer supported. Use `contextvars.ContextVar` for passing context to
+fields, pre-/post-processing methods, and validators instead.
+
+marshmallow 4 provides an experimental `Context <marshmallow.experimental.context.Context>`
+manager class that can be used to both set and retrieve context.
+
+.. code-block:: python
+
+    # 3.x
+    from marshmallow import Schema, fields
+
+
+    class UserSchema(Schema):
+        name_suffixed = fields.Function(
+            lambda obj, context: obj["name"] + context["suffix"]
+        )
+
+
+    user_schema = UserSchema()
+    user_schema.context = {"suffix": "bar"}
+    user_schema.dump({"name": "foo"})
+    # {'name_suffixed': 'foobar'}
+
+    # 4.x
+    import typing
+
+    from marshmallow import Schema, fields
+    from marshmallow.experimental.context import Context
+
+
+    class UserContext(typing.TypedDict):
+        suffix: str
+
+
+    UserSchemaContext = Context[UserContext]
+
+
+    class UserSchema(Schema):
+        name_suffixed = fields.Function(
+            lambda obj: obj["name"] + UserSchemaContext.get()["suffix"]
+        )
+
+
+    with UserSchemaContext({"suffix": "bar"}):
+        UserSchema().dump({"name": "foo"})
+        # {'name_suffixed': 'foobar'}
+
+See :ref:`using_context` for more information.
+
 Implicit field creation is removed
 **********************************
 
@@ -237,8 +289,8 @@ if you need to change the final output type.
 ``pass_many`` is renamed to ``pass_collection`` in decorators
 *************************************************************
 
-The ``pass_many`` argument to `pre_load <marshmallow.decorators.pre_load>`, 
-`post_load <marshmallow.decorators.post_load>`, `pre_dump <marshmallow.decorators.pre_dump>`, 
+The ``pass_many`` argument to `pre_load <marshmallow.decorators.pre_load>`,
+`post_load <marshmallow.decorators.post_load>`, `pre_dump <marshmallow.decorators.pre_dump>`,
 and `post_dump <marshmallow.decorators.post_dump>` is renamed to ``pass_collection``.
 
 The behavior is unchanged.
@@ -309,7 +361,7 @@ Upgrading to 3.13
 ``load_default`` and ``dump_default``
 +++++++++++++++++++++++++++++++++++++
 
-The ``missing`` and ``default`` parameters of fields are renamed to 
+The ``missing`` and ``default`` parameters of fields are renamed to
 ``load_default`` and ``dump_default``, respectively.
 
 .. code-block:: python
@@ -329,6 +381,7 @@ The ``missing`` and ``default`` parameters of fields are renamed to
         age = fields.Int(dump_default=42)
 
 ``load_default`` and ``dump_default`` are passed to the field constructor as keyword arguments.
+
 
 Upgrading to 3.3
 ++++++++++++++++
