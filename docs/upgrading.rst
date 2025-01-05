@@ -170,8 +170,8 @@ if you need to change the final output type.
 ``pass_many`` is renamed to ``pass_collection`` in decorators
 *************************************************************
 
-The ``pass_many`` argument to `pre_load <marshmallow.decorators.pre_load>`, 
-`post_load <marshmallow.decorators.post_load>`, `pre_dump <marshmallow.decorators.pre_dump>`, 
+The ``pass_many`` argument to `pre_load <marshmallow.decorators.pre_load>`,
+`post_load <marshmallow.decorators.post_load>`, `pre_dump <marshmallow.decorators.pre_dump>`,
 and `post_dump <marshmallow.decorators.post_dump>` is renamed to ``pass_collection``.
 
 The behavior is unchanged.
@@ -242,7 +242,7 @@ Upgrading to 3.13
 ``load_default`` and ``dump_default``
 +++++++++++++++++++++++++++++++++++++
 
-The ``missing`` and ``default`` parameters of fields are renamed to 
+The ``missing`` and ``default`` parameters of fields are renamed to
 ``load_default`` and ``dump_default``, respectively.
 
 .. code-block:: python
@@ -263,11 +263,11 @@ The ``missing`` and ``default`` parameters of fields are renamed to
 
 ``load_default`` and ``dump_default`` are passed to the field constructor as keyword arguments.
 
-Schema Context is Removed
+Schema context is removed
 *************************
 
-The feature allowing to pass a context to the schema has been removed. Users should
-use `contextvars` for that.
+Passing context to the schema is no longer supported. Use `contextvars` for passing context to
+fields and pre-/post-processing methods instead.
 
 marshmallow 4.0 provides an experimental `Context <marshmallow.experimental.context.Context>`
 manager class that can be used both to set and retrieve the context.
