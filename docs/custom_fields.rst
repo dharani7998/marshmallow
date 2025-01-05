@@ -13,13 +13,14 @@ Creating a field class
 ----------------------
 
 To create a custom field class, create a subclass of :class:`marshmallow.fields.Field` and implement its :meth:`_serialize <marshmallow.fields.Field._serialize>` and/or :meth:`_deserialize <marshmallow.fields.Field._deserialize>` methods.
+Field's type argument is the internal type, i.e. the type that the field deserializes to.
 
 .. code-block:: python
 
     from marshmallow import fields, ValidationError
 
 
-    class PinCode(fields.Field):
+    class PinCode(fields.Field[list[int]]):
         """Field that serializes to a string of numbers and deserializes
         to a list of numbers.
         """

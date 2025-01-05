@@ -184,7 +184,7 @@ The pipeline for serialization is similar, except that the ``pass_collection=Tru
 
         # YES
         class MySchema(Schema):
-            field_a = fields.Field()
+            field_a = fields.Raw()
 
             @pre_load
             def preprocess(self, data, **kwargs):
@@ -202,7 +202,7 @@ The pipeline for serialization is similar, except that the ``pass_collection=Tru
 
         # NO
         class MySchema(Schema):
-            field_a = fields.Field()
+            field_a = fields.Raw()
 
             @pre_load
             def step1(self, data, **kwargs):
