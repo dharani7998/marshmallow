@@ -2166,8 +2166,8 @@ def test_serializer_can_specify_nested_object_as_attribute(blog):
 class TestFieldInheritance:
     def test_inherit_fields_from_schema_subclass(self):
         expected = {
-            "field_a": fields.Number(),
-            "field_b": fields.Number(),
+            "field_a": fields.Integer(),
+            "field_b": fields.Integer(),
         }
 
         class SerializerA(Schema):
@@ -2180,8 +2180,8 @@ class TestFieldInheritance:
 
     def test_inherit_fields_from_non_schema_subclass(self):
         expected = {
-            "field_a": fields.Number(),
-            "field_b": fields.Number(),
+            "field_a": fields.Integer(),
+            "field_b": fields.Integer(),
         }
 
         class PlainBaseClass:
