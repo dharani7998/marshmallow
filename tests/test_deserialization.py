@@ -586,7 +586,7 @@ class TestFieldDeserialization:
     @pytest.mark.parametrize("fmt", ["timestamp", "timestamp_ms"])
     @pytest.mark.parametrize(
         "in_value",
-        ["", "!@#", -1, dt.datetime(2013, 11, 10, 1, 23, 45)],
+        ["", "!@#", -1],
     )
     def test_invalid_timestamp_field_deserialization(self, fmt, in_value):
         field = fields.DateTime(format=fmt)
@@ -1457,6 +1457,43 @@ class TestFieldDeserialization:
             assert field.deserialize("Valid") == "Valid"
             with pytest.raises(ValidationError, match="Invalid value."):
                 field.deserialize("invalid")
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        (
+            pytest.param(fields.List(fields.String()), ["foo", "bar"], id="List"),
+            pytest.param(
+                fields.Tuple((fields.String(), fields.Integer())),
+                ("foo", 42),
+                id="Tuple",
+            ),
+            pytest.param(fields.String(), "valid", id="String"),
+            pytest.param(fields.UUID(), uuid.uuid4(), id="UUID"),
+            pytest.param(fields.Integer(), 42, id="Integer"),
+            pytest.param(fields.Float(), 42.3, id="Float"),
+            pytest.param(fields.Decimal(), decimal.Decimal("42.3"), id="Decimal"),
+            pytest.param(fields.Boolean(), True, id="Boolean"),
+            pytest.param(fields.DateTime(), dt.datetime(2014, 8, 21), id="DateTime"),
+            pytest.param(fields.Time(), dt.time(10, 15), id="Time"),
+            pytest.param(fields.Date(), dt.date(2014, 8, 21), id="Date"),
+            pytest.param(fields.TimeDelta(), dt.timedelta(days=1), id="TimeDelta"),
+            pytest.param(fields.Dict(), {"foo": "bar"}, id="Dict"),
+            pytest.param(fields.Url(), "https://mallow.com", id="Url"),
+            pytest.param(fields.Email(), "barbara37@example.net", id="Email"),
+            pytest.param(fields.IP(), ipaddress.IPv4Address("67.60.134.65"), id="IP"),
+            pytest.param(
+                fields.IPv4(), ipaddress.IPv4Address("55.81.158.106"), id="IPv4"
+            ),
+            pytest.param(
+                fields.IPv6(),
+                ipaddress.IPv6Address("89f4:41b6:b97e:ad48:8480:1fda:a811:d1a5"),
+                id="IPv6",
+            ),
+            pytest.param(fields.Enum(GenderEnum), GenderEnum.non_binary, id="Enum"),
+        ),
+    )
+    def test_fields_accept_internal_types(self, field, value):
+        assert field.deserialize(value) == value
 
 
 # No custom deserialization behavior, so a dict is returned

@@ -1233,6 +1233,9 @@ class _TemporalField(Field[_D], metaclass=abc.ABCMeta):
         return value.strftime(data_format)
 
     def _deserialize(self, value, attr, data, **kwargs) -> _D:
+        internal_type: type[_D] = getattr(dt, self.OBJ_TYPE)
+        if isinstance(value, internal_type):
+            return value
         data_format = self.format or self.DEFAULT_FORMAT
         func = self.DESERIALIZATION_FUNCS.get(data_format)
         try:
@@ -1506,6 +1509,8 @@ class TimeDelta(Field[dt.timedelta]):
         return microseconds / microseconds_per_unit
 
     def _deserialize(self, value, attr, data, **kwargs) -> dt.timedelta:
+        if isinstance(value, dt.timedelta):
+            return value
         try:
             value = float(value)
         except (TypeError, ValueError) as error:
@@ -1853,7 +1858,7 @@ class Enum(Field[_EnumType]):
         or Field class or instance to use to (de)serialize by value. Defaults to False.
 
     If `by_value` is `False` (default), enum members are (de)serialized by symbol (name).
-    If it is `True`, they are (de)serialized by value using :class:`Field`.
+    If it is `True`, they are (de)serialized by value using `marshmallow.fields.Raw`.
     If it is a field instance or class, they are (de)serialized by value using this field.
 
     .. versionadded:: 3.18.0
@@ -1883,7 +1888,7 @@ class Enum(Field[_EnumType]):
         # Serialization by value
         else:
             if by_value is True:
-                self.field = Field()
+                self.field = Raw()
             else:
                 try:
                     self.field = _resolve_field_instance(by_value)
@@ -1908,6 +1913,8 @@ class Enum(Field[_EnumType]):
         return self.field._serialize(val, attr, obj, **kwargs)
 
     def _deserialize(self, value, attr, data, **kwargs) -> _EnumType:
+        if isinstance(value, self.enum):
+            return value
         val = self.field._deserialize(value, attr, data, **kwargs)
         if self.by_value:
             try:
