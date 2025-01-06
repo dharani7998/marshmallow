@@ -9,12 +9,11 @@ import inspect
 import json
 import typing
 import uuid
-import warnings
 from abc import ABCMeta
-from collections import OrderedDict, defaultdict
+from collections import defaultdict
 from collections.abc import Mapping
 
-from marshmallow import base, class_registry, types
+from marshmallow import class_registry, types
 from marshmallow import fields as ma_fields
 from marshmallow.decorators import (
     POST_DUMP,
@@ -38,7 +37,6 @@ from marshmallow.utils import (
     set_value,
     validate_unknown_parameter_value,
 )
-from marshmallow.warnings import RemovedInMarshmallow4Warning
 
 
 def _get_fields(attrs):
@@ -49,7 +47,7 @@ def _get_fields(attrs):
     return [
         (field_name, field_value)
         for field_name, field_value in attrs.items()
-        if is_instance_or_subclass(field_value, base.FieldABC)
+        if is_instance_or_subclass(field_value, ma_fields.Field)
     ]
 
 
@@ -84,18 +82,6 @@ class SchemaMeta(ABCMeta):
 
     def __new__(mcs, name, bases, attrs):
         meta = attrs.get("Meta")
-        ordered = getattr(meta, "ordered", False)
-        if not ordered:
-            # Inherit 'ordered' option
-            # Warning: We loop through bases instead of MRO because we don't
-            # yet have access to the class object
-            # (i.e. can't call super before we have fields)
-            for base_ in bases:
-                if hasattr(base_, "Meta") and hasattr(base_.Meta, "ordered"):
-                    ordered = base_.Meta.ordered
-                    break
-            else:
-                ordered = False
         cls_fields = _get_fields(attrs)
         # Remove fields from list of class attributes to avoid shadowing
         # Schema attributes/methods in case of name conflict
@@ -107,7 +93,7 @@ class SchemaMeta(ABCMeta):
         meta = klass.Meta
         # Set klass.opts in __new__ rather than __init__ so that it is accessible in
         # get_declared_fields
-        klass.opts = klass.OPTIONS_CLASS(meta, ordered=ordered)
+        klass.opts = klass.OPTIONS_CLASS(meta)
         # Add fields specified in the `include` class Meta option
         cls_fields += list(klass.opts.include.items())
 
@@ -193,35 +179,17 @@ class SchemaMeta(ABCMeta):
 class SchemaOpts:
     """class Meta options for the :class:`Schema`. Defines defaults."""
 
-    def __init__(self, meta, ordered: bool = False):
+    def __init__(self, meta):
         self.fields = getattr(meta, "fields", ())
         if not isinstance(self.fields, (list, tuple)):
             raise ValueError("`fields` option must be a list or tuple.")
-        self.additional = getattr(meta, "additional", ())
-        if not isinstance(self.additional, (list, tuple)):
-            raise ValueError("`additional` option must be a list or tuple.")
-        if self.fields and self.additional:
-            raise ValueError(
-                "Cannot set both `fields` and `additional` options"
-                " for the same Schema."
-            )
         self.exclude = getattr(meta, "exclude", ())
         if not isinstance(self.exclude, (list, tuple)):
             raise ValueError("`exclude` must be a list or tuple.")
         self.dateformat = getattr(meta, "dateformat", None)
         self.datetimeformat = getattr(meta, "datetimeformat", None)
         self.timeformat = getattr(meta, "timeformat", None)
-        if hasattr(meta, "json_module"):
-            warnings.warn(
-                "The json_module class Meta option is deprecated. Use render_module instead.",
-                RemovedInMarshmallow4Warning,
-                stacklevel=2,
-            )
-            render_module = getattr(meta, "json_module", json)
-        else:
-            render_module = json
-        self.render_module = getattr(meta, "render_module", render_module)
-        self.ordered = getattr(meta, "ordered", ordered)
+        self.render_module = getattr(meta, "render_module", json)
         self.index_errors = getattr(meta, "index_errors", True)
         self.include = getattr(meta, "include", {})
         self.load_only = getattr(meta, "load_only", ())
@@ -269,8 +237,6 @@ class Schema(metaclass=SchemaMeta):
         delimiters.
     :param many: Should be set to `True` if ``obj`` is a collection
         so that the object will be serialized to a list.
-    :param context: Optional context passed to :class:`fields.Method` and
-        :class:`fields.Function` fields.
     :param load_only: Fields to skip during serialization (write-only fields)
     :param dump_only: Fields to skip during deserialization (read-only fields)
     :param partial: Whether to ignore missing fields and not require
@@ -281,7 +247,10 @@ class Schema(metaclass=SchemaMeta):
         fields in the data. Use `EXCLUDE`, `INCLUDE` or `RAISE`.
 
     .. versionchanged:: 3.0.0
-        `prefix` parameter removed.
+        Remove ``prefix`` parameter.
+
+    .. versionchanged:: 4.0.0
+        Remove ``context`` parameter.
     """
 
     TYPE_MAPPING: dict[type, type[ma_fields.Field]] = {
@@ -311,6 +280,7 @@ class Schema(metaclass=SchemaMeta):
     OPTIONS_CLASS: type = SchemaOpts
 
     set_class = OrderedSet
+    dict_class = dict  # type: type[dict]
 
     # These get set by SchemaMeta
     opts: SchemaOpts
@@ -329,9 +299,6 @@ class Schema(metaclass=SchemaMeta):
         Available options:
 
         - ``fields``: Tuple or list of fields to include in the serialized result.
-        - ``additional``: Tuple or list of fields to include *in addition* to the
-            explicitly declared fields. ``additional`` and ``fields`` are
-            mutually-exclusive options.
         - ``include``: Dictionary of additional fields to include in the schema. It is
             usually better to define fields as class variables, but you may need to
             use this option, e.g., if your fields are Python keywords. May be an
@@ -363,7 +330,6 @@ class Schema(metaclass=SchemaMeta):
         only: types.StrSequenceOrSet | None = None,
         exclude: types.StrSequenceOrSet = (),
         many: bool | None = None,
-        context: dict | None = None,
         load_only: types.StrSequenceOrSet = (),
         dump_only: types.StrSequenceOrSet = (),
         partial: bool | types.StrSequenceOrSet | None = None,
@@ -381,7 +347,6 @@ class Schema(metaclass=SchemaMeta):
         self.exclude: set[typing.Any] | typing.MutableSet[typing.Any] = set(
             self.opts.exclude
         ) | set(exclude)
-        self.ordered = self.opts.ordered
         self.load_only = set(load_only) or set(self.opts.load_only)
         self.dump_only = set(dump_only) or set(self.opts.dump_only)
         self.partial = partial
@@ -390,14 +355,6 @@ class Schema(metaclass=SchemaMeta):
             if unknown is None
             else validate_unknown_parameter_value(unknown)
         )
-        if context:
-            warnings.warn(
-                "The `context` parameter is deprecated and will be removed in marshmallow 4.0. "
-                "Use `contextvars.ContextVar` to pass context instead.",
-                RemovedInMarshmallow4Warning,
-                stacklevel=2,
-            )
-        self.context = context or {}
         self._normalize_nested_options()
         #: Dictionary mapping field_names -> :class:`Field` objects
         self.fields: dict[str, ma_fields.Field] = {}
@@ -413,13 +370,6 @@ class Schema(metaclass=SchemaMeta):
 
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}(many={self.many})>"
-
-    @property
-    def dict_class(self) -> type[dict]:
-        if self.ordered:
-            return OrderedDict
-        else:
-            return dict
 
     @classmethod
     def from_dict(
@@ -526,7 +476,6 @@ class Schema(metaclass=SchemaMeta):
             for `self.many` is used.
         :return: Serialized data
 
-        .. versionadded:: 1.0.0
         .. versionchanged:: 3.0.0b7
             This method returns the serialized data rather than a ``(data, errors)`` duple.
             A :exc:`ValidationError <marshmallow.exceptions.ValidationError>` is raised
@@ -559,7 +508,6 @@ class Schema(metaclass=SchemaMeta):
             for `self.many` is used.
         :return: A ``json`` string
 
-        .. versionadded:: 1.0.0
         .. versionchanged:: 3.0.0b7
             This method returns the serialized data rather than a ``(data, errors)`` duple.
             A :exc:`ValidationError <marshmallow.exceptions.ValidationError>` is raised
@@ -707,7 +655,6 @@ class Schema(metaclass=SchemaMeta):
             If `None`, the value for `self.unknown` is used.
         :return: Deserialized data
 
-        .. versionadded:: 1.0.0
         .. versionchanged:: 3.0.0b7
             This method returns the deserialized data rather than a ``(data, errors)`` duple.
             A :exc:`ValidationError <marshmallow.exceptions.ValidationError>` is raised
@@ -740,7 +687,6 @@ class Schema(metaclass=SchemaMeta):
             If `None`, the value for `self.unknown` is used.
         :return: Deserialized data
 
-        .. versionadded:: 1.0.0
         .. versionchanged:: 3.0.0b7
             This method returns the deserialized data rather than a ``(data, errors)`` duple.
             A :exc:`ValidationError <marshmallow.exceptions.ValidationError>` is raised
@@ -790,8 +736,6 @@ class Schema(metaclass=SchemaMeta):
             its value is an iterable, only missing fields listed in that iterable
             will be ignored. Use dot delimiters to specify nested fields.
         :return: A dictionary of validation errors.
-
-        .. versionadded:: 1.1.0
         """
         try:
             self._do_load(data, many=many, partial=partial, postprocess=False)
@@ -868,7 +812,7 @@ class Schema(metaclass=SchemaMeta):
                 field_errors = bool(error_store.errors)
                 self._invoke_schema_validators(
                     error_store=error_store,
-                    pass_many=True,
+                    pass_collection=True,
                     data=result,
                     original_data=data,
                     many=many,
@@ -877,7 +821,7 @@ class Schema(metaclass=SchemaMeta):
                 )
                 self._invoke_schema_validators(
                     error_store=error_store,
-                    pass_many=False,
+                    pass_collection=False,
                     data=result,
                     original_data=data,
                     many=many,
@@ -948,8 +892,6 @@ class Schema(metaclass=SchemaMeta):
             available_field_names = self.set_class(self.opts.fields)
         else:
             available_field_names = self.set_class(self.declared_fields.keys())
-            if self.opts.additional:
-                available_field_names |= self.set_class(self.opts.additional)
 
         invalid_fields = self.set_class()
 
@@ -974,7 +916,7 @@ class Schema(metaclass=SchemaMeta):
 
         fields_dict = self.dict_class()
         for field_name in field_names:
-            field_obj = self.declared_fields.get(field_name, ma_fields.Inferred())
+            field_obj = self.declared_fields[field_name]
             self._bind_field(field_name, field_obj)
             fields_dict[field_name] = field_obj
 
@@ -1039,7 +981,7 @@ class Schema(metaclass=SchemaMeta):
             # Field declared as a class, not an instance. Ignore type checking because
             # we handle unsupported arg types, i.e. this is dead code from
             # the type checker's perspective.
-            if isinstance(field_obj, type) and issubclass(field_obj, base.FieldABC):
+            if isinstance(field_obj, type) and issubclass(field_obj, ma_fields.Field):
                 msg = (
                     f'Field for "{field_name}" must be declared as a '
                     "Field instance, not a class. "
@@ -1052,14 +994,18 @@ class Schema(metaclass=SchemaMeta):
     def _invoke_dump_processors(
         self, tag: str, data, *, many: bool, original_data=None
     ):
-        # The pass_many post-dump processors may do things like add an envelope, so
-        # invoke those after invoking the non-pass_many processors which will expect
+        # The pass_collection post-dump processors may do things like add an envelope, so
+        # invoke those after invoking the non-pass_collection processors which will expect
         # to get a list of items.
         data = self._invoke_processors(
-            tag, pass_many=False, data=data, many=many, original_data=original_data
+            tag,
+            pass_collection=False,
+            data=data,
+            many=many,
+            original_data=original_data,
         )
         data = self._invoke_processors(
-            tag, pass_many=True, data=data, many=many, original_data=original_data
+            tag, pass_collection=True, data=data, many=many, original_data=original_data
         )
         return data
 
@@ -1072,11 +1018,11 @@ class Schema(metaclass=SchemaMeta):
         original_data,
         partial: bool | types.StrSequenceOrSet | None,
     ):
-        # This has to invert the order of the dump processors, so run the pass_many
+        # This has to invert the order of the dump processors, so run the pass_collection
         # processors first.
         data = self._invoke_processors(
             tag,
-            pass_many=True,
+            pass_collection=True,
             data=data,
             many=many,
             original_data=original_data,
@@ -1084,7 +1030,7 @@ class Schema(metaclass=SchemaMeta):
         )
         data = self._invoke_processors(
             tag,
-            pass_many=False,
+            pass_collection=False,
             data=data,
             many=many,
             original_data=original_data,
@@ -1142,7 +1088,7 @@ class Schema(metaclass=SchemaMeta):
         self,
         *,
         error_store: ErrorStore,
-        pass_many: bool,
+        pass_collection: bool,
         data,
         original_data,
         many: bool,
@@ -1150,14 +1096,14 @@ class Schema(metaclass=SchemaMeta):
         field_errors: bool = False,
     ):
         for attr_name, hook_many, validator_kwargs in self._hooks[VALIDATES_SCHEMA]:
-            if hook_many != pass_many:
+            if hook_many != pass_collection:
                 continue
             validator = getattr(self, attr_name)
             if field_errors and validator_kwargs["skip_on_field_errors"]:
                 continue
             pass_original = validator_kwargs.get("pass_original", False)
 
-            if many and not pass_many:
+            if many and not pass_collection:
                 for idx, (item, orig) in enumerate(zip(data, original_data)):
                     self._run_validator(
                         validator,
@@ -1184,20 +1130,20 @@ class Schema(metaclass=SchemaMeta):
         self,
         tag: str,
         *,
-        pass_many: bool,
+        pass_collection: bool,
         data,
         many: bool,
         original_data=None,
         **kwargs,
     ):
         for attr_name, hook_many, processor_kwargs in self._hooks[tag]:
-            if hook_many != pass_many:
+            if hook_many != pass_collection:
                 continue
             # This will be a bound method.
             processor = getattr(self, attr_name)
             pass_original = processor_kwargs.get("pass_original", False)
 
-            if many and not pass_many:
+            if many and not pass_collection:
                 if pass_original:
                     data = [
                         processor(item, original, many=many, **kwargs)

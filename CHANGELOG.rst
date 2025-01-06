@@ -1,6 +1,111 @@
 Changelog
 ---------
 
+4.0.0 (unreleased)
+******************
+
+See :ref:`upgrading_4_0` for a guide on updating your code.
+
+Features:
+
+- Typing: Add types to all `Field <marshmallow.fields.Field>` subclass kwargs (:issue:`2285`).
+  Thanks :user:`navignaw` for the suggestion.
+- `DateTime <marshmallow.fields.DateTime>`, `Date <marshmallow.fields.Date>`, `Time <marshmallow.fields.Time>`,
+  `TimeDelta <marshmallow.fields.TimeDelta>`, and `Enum <marshmallow.fields.Enum>`
+  accept their internal value types as valid input (:issue:`1415`).
+  Thanks :user:`bitdancer` for the suggestion.
+
+Other changes:
+
+- Typing: `Field <marshmallow.fields.Field>` is now a generic type with a type argument for the internal value type.
+  Therefore, it is no longer usable as a field in a schema. Use a subclass of `Field <marshmallow.fields.Field>` instead.
+- `marshmallow.fields.UUID` no longer subclasses `marshmallow.fields.String`.
+- *Backwards-incompatible*: `marshmallow.fields.Number` is no longer usable as a field in a schema.
+  Use `marshmallow.fields.Integer`, `marshmallow.fields.Float`, or `marshmallow.fields.Decimal` instead.
+- *Backwards-incompatible*: `marshmallow.fields.Mapping` is no longer usable as a field in a schema.
+  Use `marshmallow.fields.Dict` instead.
+- *Backwards-incompatible*: Use `datetime.date.fromisoformat`, `datetime.time.fromisoformat`, and `datetime.datetime.fromisoformat` from the standard library to deserialize dates, times and datetimes (:pr:`2078`).
+- *Backwards-incompatible*: `marshmallow.fields.Boolean` no longer serializes non-boolean values.
+
+As a consequence of this change:
+  - Time with time offsets are now supported.
+  - YYYY-MM-DD is now accepted as a datetime and deserialized as naive 00:00 AM.
+  - `from_iso_date`, `from_iso_time` and `from_iso_datetime` are removed from `marshmallow.utils`.
+
+- *Backwards-incompatible*: Custom validators must raise a `ValidationError <marshmallow.exceptions.ValidationError>` for invalid values.
+  Returning `False` is no longer supported (:issue:`1775`).
+- *Backwards-incompatible*: Rename ``schema`` parameter to ``parent`` in `marshmallow.fields.Field._bind_to_schema` (:issue:`1360`).
+- *Backwards-incompatible*: Rename ``pass_many`` parameter to ``pass_collection`` in pre/post processing methods (:issue:`1369`).
+- *Backwards-incompatible*: `marshmallow.fields.TimeDelta` no longer truncates float values when
+  deserializing (:pr:`2654`). This allows microseconds to be preserved, e.g.
+
+.. code-block:: python
+
+    from marshmallow import fields
+
+    field = fields.TimeDelta()
+
+    # Before
+    field.deserialize(12.9)
+    datetime.timedelta(seconds=12)
+    # datetime.timedelta(seconds=12)
+
+    # After
+    field.deserialize(12.9)
+    # datetime.timedelta(seconds=12, microseconds=900000)
+
+- Improve performance and minimize float precision loss of `marshmallow.fields.TimeDelta` serialization (:pr:`2654`).
+- *Backwards-incompatible*: Remove ``serialization_type`` parameter from
+  `marshmallow.fields.TimeDelta` (:pr:`2654`).
+
+Thanks :user:`ddelange` for the PR.
+
+- *Backwards-incompatible*: Remove `Schema <marshmallow.schema.Schema>`'s ``context`` attribute. Passing a context
+  should be done using `contextvars.ContextVar` (:issue:`1826`).
+  marshmallow 4 provides an experimental `Context <marshmallow.experimental.context.Context>`
+  manager class that can be used to both set and retrieve context.
+
+.. code-block:: python
+
+    import typing
+
+    from marshmallow import Schema, fields
+    from marshmallow.experimental.context import Context
+
+
+    class UserContext(typing.TypedDict):
+        suffix: str
+
+
+    class UserSchema(Schema):
+        name_suffixed = fields.Function(
+            lambda obj: obj["name"] + Context[UserContext].get()["suffix"]
+        )
+
+
+    with Context[UserContext]({"suffix": "bar"}):
+        UserSchema().dump({"name": "foo"})
+        # {'name_suffixed': 'foobar'}
+
+Deprecations/Removals:
+
+- *Backwards-incompatible*: Remove implicit field creation, i.e. using the ``fields`` or ``additional`` class Meta options with undeclared fields (:issue:`1356`).
+- The `ordered` class Meta option is removed  (:issue:`2146`). Field order is already preserved by default.
+  Set `Schema.dict_class` to `OrderedDict` to maintain the previous behavior.
+- The `marshmallow.base` module is removed (:pr:`2722`).
+
+Previously-deprecated API have been removed, including:
+
+- `default` and `missing` parameters, which were replaced by `dump_default` and `load_default` in 3.13.0 (:pr:`1742`, :pr:`2700`).
+- Passing field metadata via keyword arguments (deprecated in 3.10.0). Use the explicit ``metadata=...``
+  argument instead (:issue:`1350`).
+- ``Field.fail``, which was replaced by ``Field.make_error`` in 3.0.0.
+- Passing `"self"` to `fields.Nested` (deprecated in 3.3.0). Use a callable instead.
+- `json_module` class Meta option (deprecated in 3.0.0b3). Use `render_module` instead.
+- `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
+- Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
+
+3.24.0 (unreleased)
 3.24.0 (2025-01-06)
 *******************
 
@@ -11,7 +116,7 @@ Features:
 
 Bug fixes:
 
-- Typing: Fix type hint for ``nested`` parameter of `Nested <marshmallow.fields.Nested>`.
+- Typing: Fix type hint for ``nested`` parameter of `Nested <marshmallow.fields.Nested>` (:pr:`2721`).
 
 Deprecations:
 

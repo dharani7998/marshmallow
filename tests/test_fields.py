@@ -52,7 +52,7 @@ class TestField:
             fields.Raw(required=True, load_default=42)
 
     def test_custom_field_receives_attr_and_obj(self):
-        class MyField(fields.Field):
+        class MyField(fields.Field[str]):
             def _deserialize(self, val, attr, data, **kwargs):
                 assert attr == "name"
                 assert data["foo"] == 42
@@ -65,7 +65,7 @@ class TestField:
         assert result == {"name": "Monty"}
 
     def test_custom_field_receives_data_key_if_set(self):
-        class MyField(fields.Field):
+        class MyField(fields.Field[str]):
             def _deserialize(self, val, attr, data, **kwargs):
                 assert attr == "name"
                 assert data["foo"] == 42
@@ -78,7 +78,7 @@ class TestField:
         assert result == {"Name": "Monty"}
 
     def test_custom_field_follows_data_key_if_set(self):
-        class MyField(fields.Field):
+        class MyField(fields.Field[str]):
             def _serialize(self, val, attr, data):
                 assert attr == "name"
                 assert data["foo"] == 42
@@ -196,10 +196,7 @@ class TestParentAndName:
 
 class TestMetadata:
     @pytest.mark.parametrize("FieldClass", ALL_FIELDS)
-    def test_extra_metadata_may_be_added_to_field(self, FieldClass):  # noqa
-        with pytest.warns(DeprecationWarning):
-            field = FieldClass(description="Just a normal field.")
-        assert field.metadata["description"] == "Just a normal field."
+    def test_extra_metadata_may_be_added_to_field(self, FieldClass):
         field = FieldClass(
             required=True,
             dump_default=None,
@@ -207,79 +204,6 @@ class TestMetadata:
             metadata={"description": "foo", "widget": "select"},
         )
         assert field.metadata == {"description": "foo", "widget": "select"}
-
-    @pytest.mark.parametrize("FieldClass", ALL_FIELDS)
-    def test_field_metadata_added_in_deprecated_style_warns(self, FieldClass):  # noqa
-        # just the old style
-        with pytest.warns(DeprecationWarning):
-            field = FieldClass(description="Just a normal field.")
-            assert field.metadata["description"] == "Just a normal field."
-        # mixed styles
-        with pytest.warns(DeprecationWarning):
-            field = FieldClass(
-                required=True,
-                dump_default=None,
-                validate=lambda v: True,
-                description="foo",
-                metadata={"widget": "select"},
-            )
-        assert field.metadata == {"description": "foo", "widget": "select"}
-
-
-class TestDeprecatedDefaultAndMissing:
-    @pytest.mark.parametrize("FieldClass", ALL_FIELDS)
-    def test_load_default_in_deprecated_style_warns(self, FieldClass):
-        # in constructor
-        with pytest.warns(
-            DeprecationWarning,
-            match="The 'missing' argument to fields is deprecated. "
-            "Use 'load_default' instead.",
-        ):
-            FieldClass(missing=None)
-
-        # via attribute
-        myfield = FieldClass(load_default=1)
-        with pytest.warns(
-            DeprecationWarning,
-            match="The 'missing' attribute of fields is deprecated. "
-            "Use 'load_default' instead.",
-        ):
-            assert myfield.missing == 1
-        with pytest.warns(
-            DeprecationWarning,
-            match="The 'missing' attribute of fields is deprecated. "
-            "Use 'load_default' instead.",
-        ):
-            myfield.missing = 0
-        # but setting it worked
-        assert myfield.load_default == 0
-
-    @pytest.mark.parametrize("FieldClass", ALL_FIELDS)
-    def test_dump_default_in_deprecated_style_warns(self, FieldClass):
-        # in constructor
-        with pytest.warns(
-            DeprecationWarning,
-            match="The 'default' argument to fields is deprecated. "
-            "Use 'dump_default' instead.",
-        ):
-            FieldClass(default=None)
-
-        # via attribute
-        myfield = FieldClass(dump_default=1)
-        with pytest.warns(
-            DeprecationWarning,
-            match="The 'default' attribute of fields is deprecated. "
-            "Use 'dump_default' instead.",
-        ):
-            assert myfield.default == 1
-        with pytest.warns(
-            DeprecationWarning,
-            match="The 'default' attribute of fields is deprecated. "
-            "Use 'dump_default' instead.",
-        ):
-            myfield.default = 0
-        # but setting it worked
-        assert myfield.dump_default == 0
 
 
 class TestErrorMessages:
@@ -310,16 +234,6 @@ class TestErrorMessages:
 
         error = field.make_error(key)
         assert error.args[0] == message
-
-    @pytest.mark.parametrize(("key", "message"), error_messages)
-    def test_fail(self, key, message):
-        field = self.MyField()
-
-        with pytest.warns(DeprecationWarning):
-            try:
-                field.fail(key)
-            except ValidationError as error:
-                assert error.args[0] == message
 
     def test_make_error_key_doesnt_exist(self):
         with pytest.raises(AssertionError) as excinfo:

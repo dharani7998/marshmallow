@@ -22,7 +22,10 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">=3.9"
-dependencies = ["packaging>=17.0"]
+dependencies = [
+  "backports-datetime-fromisoformat; python_version < '3.11'",
+  "typing-extensions; python_version < '3.11'",
+]
 
 [project.urls]
 Changelog = "https://marshmallow.readthedocs.io/en/latest/changelog.html"
@@ -90,6 +93,3 @@ no_implicit_optional = true
 [tool.pytest.ini_options]
 norecursedirs = ".git .ropeproject .tox docs env venv tests/mypy_test_cases"
 addopts = "-v --tb=short"
-filterwarnings = [
-  "ignore:Returning `False` from a validator:marshmallow.warnings.ChangedInMarshmallow4Warning",
-]

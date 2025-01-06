@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import re
 import typing
-import warnings
 from abc import ABC, abstractmethod
 from itertools import zip_longest
 from operator import attrgetter
 
 from marshmallow import types
 from marshmallow.exceptions import ValidationError
-from marshmallow.warnings import ChangedInMarshmallow4Warning
 
 _T = typing.TypeVar("_T")
 
@@ -60,14 +58,10 @@ class And(Validator):
         # ValidationError: ['Must be greater than or equal to 0.', 'Not an even value.']
 
     :param validators: Validators to combine.
-    :param error: Error message to use when a validator returns ``False``.
     """
 
-    default_error_message = "Invalid value."
-
-    def __init__(self, *validators: types.Validator, error: str | None = None):
+    def __init__(self, *validators: types.Validator):
         self.validators = tuple(validators)
-        self.error: str = error or self.default_error_message
 
     def _repr_args(self) -> str:
         return f"validators={self.validators!r}"
@@ -77,15 +71,7 @@ class And(Validator):
         kwargs = {}
         for validator in self.validators:
             try:
-                r = validator(value)
-                if not isinstance(validator, Validator) and r is False:
-                    warnings.warn(
-                        "Returning `False` from a validator is deprecated. "
-                        "Raise a `ValidationError` instead.",
-                        ChangedInMarshmallow4Warning,
-                        stacklevel=2,
-                    )
-                    raise ValidationError(self.error)
+                validator(value)
             except ValidationError as err:
                 kwargs.update(err.kwargs)
                 if isinstance(err.messages, dict):

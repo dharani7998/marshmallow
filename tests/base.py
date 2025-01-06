@@ -2,6 +2,7 @@
 
 import datetime as dt
 import functools
+import typing
 import uuid
 from enum import Enum, IntEnum
 from zoneinfo import ZoneInfo
@@ -62,17 +63,30 @@ ALL_FIELDS = [
 ##### Custom asserts #####
 
 
-def assert_date_equal(d1, d2):
+def assert_date_equal(d1: dt.date, d2: dt.date) -> None:
     assert d1.year == d2.year
     assert d1.month == d2.month
     assert d1.day == d2.day
 
 
-def assert_time_equal(t1, t2):
+def assert_time_equal(t1: dt.time, t2: dt.time) -> None:
     assert t1.hour == t2.hour
     assert t1.minute == t2.minute
     assert t1.second == t2.second
     assert t1.microsecond == t2.microsecond
+
+
+##### Validation #####
+
+
+def predicate(
+    func: typing.Callable[[typing.Any], typing.Any],
+) -> typing.Callable[[typing.Any], None]:
+    def validate(value: typing.Any) -> None:
+        if not func(value):
+            raise ValidationError("Invalid value.")
+
+    return validate
 
 
 ##### Models #####
@@ -160,7 +174,7 @@ class DummyModel:
 ###### Schemas #####
 
 
-class Uppercased(fields.Field):
+class Uppercased(fields.String):
     """Custom field formatting example."""
 
     def _serialize(self, value, attr, obj):
@@ -227,67 +241,9 @@ class UserSchema(Schema):
         return User(**data)
 
 
-class UserMetaSchema(Schema):
-    """The equivalent of the UserSchema, using the ``fields`` option."""
-
-    uppername = Uppercased(attribute="name", dump_only=True)
-    balance = fields.Decimal()
-    is_old = fields.Method("get_is_old")
-    lowername = fields.Function(get_lowername)
-    species = fields.String(attribute="SPECIES")
-    homepage = fields.Url()
-    email = fields.Email()
-    various_data = fields.Dict()
-
-    def get_is_old(self, obj):
-        if obj is None:
-            return missing
-        if isinstance(obj, dict):
-            age = obj.get("age")
-        else:
-            age = obj.age
-        try:
-            return age > 80
-        except TypeError as te:
-            raise ValidationError(str(te)) from te
-
-    class Meta:
-        fields = (
-            "name",
-            "age",
-            "created",
-            "updated",
-            "id",
-            "homepage",
-            "uppername",
-            "email",
-            "balance",
-            "is_old",
-            "lowername",
-            "species",
-            "registered",
-            "hair_colors",
-            "sex_choices",
-            "finger_count",
-            "uid",
-            "time_registered",
-            "birthdate",
-            "birthtime",
-            "since_created",
-            "various_data",
-        )
-
-
 class UserExcludeSchema(UserSchema):
     class Meta:
         exclude = ("created", "updated")
-
-
-class UserAdditionalSchema(Schema):
-    lowername = fields.Function(lambda obj: obj.name.lower())
-
-    class Meta:
-        additional = ("name", "age", "created", "email")
 
 
 class UserIntSchema(UserSchema):
@@ -312,21 +268,6 @@ class BlogSchema(Schema):
     collaborators = fields.List(fields.Nested(UserSchema()))
     categories = fields.List(fields.String)
     id = fields.String()
-
-
-class BlogUserMetaSchema(Schema):
-    user = fields.Nested(UserMetaSchema())
-    collaborators = fields.List(fields.Nested(UserMetaSchema()))
-
-
-class BlogSchemaMeta(Schema):
-    """Same as BlogSerializer but using ``fields`` options."""
-
-    user = fields.Nested(UserSchema)
-    collaborators = fields.List(fields.Nested(UserSchema()))
-
-    class Meta:
-        fields = ("title", "user", "collaborators", "categories", "id")
 
 
 class BlogOnlySchema(Schema):

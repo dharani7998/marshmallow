@@ -7,13 +7,15 @@ from unittest.mock import patch
 
 import pytest
 
-from marshmallow import EXCLUDE, INCLUDE, RAISE, Schema, fields, validate
-from marshmallow.exceptions import ValidationError
-from marshmallow.validate import Equal
-from marshmallow.warnings import (
-    ChangedInMarshmallow4Warning,
-    RemovedInMarshmallow4Warning,
+from marshmallow import (
+    EXCLUDE,
+    INCLUDE,
+    RAISE,
+    Schema,
+    fields,
+    validate,
 )
+from marshmallow.exceptions import ValidationError
 from tests.base import (
     ALL_FIELDS,
     DateEnum,
@@ -22,6 +24,7 @@ from tests.base import (
     assert_date_equal,
     assert_time_equal,
     central,
+    predicate,
 )
 
 
@@ -405,8 +408,7 @@ class TestFieldDeserialization:
             boolfield.deserialize("notabool")
         assert str(excinfo.value.args[0]) == "Not valid: notabool"
 
-        with pytest.warns(ChangedInMarshmallow4Warning):
-            numfield = fields.Number(error_messages=error_messages)
+        numfield = fields.Float(error_messages=error_messages)
         with pytest.raises(ValidationError) as excinfo:
             numfield.deserialize("notanum")
         assert str(excinfo.value.args[0]) == "Not valid: notanum"
@@ -433,7 +435,7 @@ class TestFieldDeserialization:
             "",
             [],
             "2018",
-            "2018-01-01",
+            "2018-01",
             dt.datetime.now().strftime("%H:%M:%S %Y-%m-%d"),
             dt.datetime.now().strftime("%m-%d-%Y %H:%M:%S"),
         ],
@@ -584,7 +586,7 @@ class TestFieldDeserialization:
     @pytest.mark.parametrize("fmt", ["timestamp", "timestamp_ms"])
     @pytest.mark.parametrize(
         "in_value",
-        ["", "!@#", -1, dt.datetime(2013, 11, 10, 1, 23, 45)],
+        ["", "!@#", -1],
     )
     def test_invalid_timestamp_field_deserialization(self, fmt, in_value):
         field = fields.DateTime(format=fmt)
@@ -690,9 +692,12 @@ class TestFieldDeserialization:
         ("value", "expected"),
         [
             ("01:23:45", dt.time(1, 23, 45)),
-            ("01:23:45+01:00", dt.time(1, 23, 45)),
             ("01:23:45.123", dt.time(1, 23, 45, 123000)),
             ("01:23:45.123456", dt.time(1, 23, 45, 123456)),
+            (
+                "01:23:45+01:00",
+                dt.time(1, 23, 45, tzinfo=dt.timezone(dt.timedelta(seconds=3600))),
+            ),
         ],
     )
     def test_iso_time_field_deserialization(self, fmt, value, expected):
@@ -703,7 +708,7 @@ class TestFieldDeserialization:
         assert field.deserialize(value) == expected
 
     def test_invalid_timedelta_precision(self):
-        with pytest.raises(ValueError, match='The precision must be "days",'):
+        with pytest.raises(ValueError, match="The precision must be one of: weeks,"):
             fields.TimeDelta("invalid")
 
     def test_timedelta_field_deserialization(self):
@@ -713,6 +718,13 @@ class TestFieldDeserialization:
         assert result.days == 0
         assert result.seconds == 42
         assert result.microseconds == 0
+
+        field = fields.TimeDelta()
+        result = field.deserialize("42.9")
+        assert isinstance(result, dt.timedelta)
+        assert result.days == 0
+        assert result.seconds == 42
+        assert result.microseconds == 900000
 
         field = fields.TimeDelta(fields.TimeDelta.SECONDS)
         result = field.deserialize(100000)
@@ -746,7 +758,7 @@ class TestFieldDeserialization:
         assert isinstance(result, dt.timedelta)
         assert result.days == 0
         assert result.seconds == 12
-        assert result.microseconds == 0
+        assert result.microseconds == 900000
 
         field = fields.TimeDelta(fields.TimeDelta.WEEKS)
         result = field.deserialize(1)
@@ -777,7 +789,7 @@ class TestFieldDeserialization:
         assert result.microseconds == 456000
 
         total_microseconds_value = 322.0
-        field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS, float)
+        field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS)
         result = field.deserialize(total_microseconds_value)
         assert isinstance(result, dt.timedelta)
         unit_value = dt.timedelta(microseconds=1).total_seconds()
@@ -786,7 +798,7 @@ class TestFieldDeserialization:
         )
 
         total_microseconds_value = 322.12345
-        field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS, float)
+        field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS)
         result = field.deserialize(total_microseconds_value)
         assert isinstance(result, dt.timedelta)
         unit_value = dt.timedelta(microseconds=1).total_seconds()
@@ -795,7 +807,7 @@ class TestFieldDeserialization:
         )
 
         total_milliseconds_value = 322.223
-        field = fields.TimeDelta(fields.TimeDelta.MILLISECONDS, float)
+        field = fields.TimeDelta(fields.TimeDelta.MILLISECONDS)
         result = field.deserialize(total_milliseconds_value)
         assert isinstance(result, dt.timedelta)
         unit_value = dt.timedelta(milliseconds=1).total_seconds()
@@ -804,34 +816,34 @@ class TestFieldDeserialization:
         )
 
         total_seconds_value = 322.223
-        field = fields.TimeDelta(fields.TimeDelta.SECONDS, float)
+        field = fields.TimeDelta(fields.TimeDelta.SECONDS)
         result = field.deserialize(total_seconds_value)
         assert isinstance(result, dt.timedelta)
         assert math.isclose(result.total_seconds(), total_seconds_value)
 
         total_minutes_value = 322.223
-        field = fields.TimeDelta(fields.TimeDelta.MINUTES, float)
+        field = fields.TimeDelta(fields.TimeDelta.MINUTES)
         result = field.deserialize(total_minutes_value)
         assert isinstance(result, dt.timedelta)
         unit_value = dt.timedelta(minutes=1).total_seconds()
         assert math.isclose(result.total_seconds() / unit_value, total_minutes_value)
 
         total_hours_value = 322.223
-        field = fields.TimeDelta(fields.TimeDelta.HOURS, float)
+        field = fields.TimeDelta(fields.TimeDelta.HOURS)
         result = field.deserialize(total_hours_value)
         assert isinstance(result, dt.timedelta)
         unit_value = dt.timedelta(hours=1).total_seconds()
         assert math.isclose(result.total_seconds() / unit_value, total_hours_value)
 
         total_days_value = 322.223
-        field = fields.TimeDelta(fields.TimeDelta.DAYS, float)
+        field = fields.TimeDelta(fields.TimeDelta.DAYS)
         result = field.deserialize(total_days_value)
         assert isinstance(result, dt.timedelta)
         unit_value = dt.timedelta(days=1).total_seconds()
         assert math.isclose(result.total_seconds() / unit_value, total_days_value)
 
         total_weeks_value = 322.223
-        field = fields.TimeDelta(fields.TimeDelta.WEEKS, float)
+        field = fields.TimeDelta(fields.TimeDelta.WEEKS)
         result = field.deserialize(total_weeks_value)
         assert isinstance(result, dt.timedelta)
         unit_value = dt.timedelta(weeks=1).total_seconds()
@@ -988,18 +1000,6 @@ class TestFieldDeserialization:
     def test_function_field_deserialization_with_callable(self):
         field = fields.Function(lambda x: None, deserialize=lambda val: val.upper())
         assert field.deserialize("foo") == "FOO"
-
-    def test_function_field_deserialization_with_context(self):
-        class Parent(Schema):
-            pass
-
-        field = fields.Function(
-            lambda x: None,
-            deserialize=lambda val, context: val.upper() + context["key"],
-        )
-        with pytest.warns(RemovedInMarshmallow4Warning):
-            field.parent = Parent(context={"key": "BAR"})
-        assert field.deserialize("foo") == "FOOBAR"
 
     def test_function_field_passed_deserialize_only_is_load_only(self):
         field = fields.Function(deserialize=lambda val: val.upper())
@@ -1400,24 +1400,12 @@ class TestFieldDeserialization:
         assert sch.load({"foo": 24})["foo"] == 42
 
     def test_field_deserialization_with_user_validator_function(self):
-        field = fields.String(validate=lambda s: s.lower() == "valid")
+        field = fields.String(validate=predicate(lambda s: s.lower() == "valid"))
         assert field.deserialize("Valid") == "Valid"
         with pytest.raises(ValidationError) as excinfo:
             field.deserialize("invalid")
         assert excinfo.value.args[0][0] == "Invalid value."
         assert type(excinfo.value) is ValidationError
-
-    def test_field_deserialization_with_user_validator_class_that_returns_bool(self):
-        class MyValidator:
-            def __call__(self, val):
-                if val == "valid":
-                    return True
-                return False
-
-        field = fields.Raw(validate=MyValidator())
-        assert field.deserialize("valid") == "valid"
-        with pytest.raises(ValidationError, match="Invalid value."):
-            field.deserialize("invalid")
 
     def test_field_deserialization_with_user_validator_that_raises_error_with_list(
         self,
@@ -1431,17 +1419,11 @@ class TestFieldDeserialization:
         errors = MySchema().validate({"foo": 42})
         assert errors["foo"] == ["err1", "err2"]
 
-    def test_validator_must_return_false_to_raise_error(self):
-        # validator returns None, so anything validates
-        field = fields.String(validate=lambda s: None)
-        assert field.deserialize("Valid") == "Valid"
-        # validator returns False, so nothing validates
-        field2 = fields.String(validate=lambda s: False)
-        with pytest.raises(ValidationError):
-            field2.deserialize("invalid")
-
     def test_field_deserialization_with_validator_with_nonascii_input(self):
-        field = fields.String(validate=lambda s: False)
+        def validate(val):
+            raise ValidationError("oops")
+
+        field = fields.String(validate=validate)
         with pytest.raises(ValidationError) as excinfo:
             field.deserialize("привет")
         assert type(excinfo.value) is ValidationError
@@ -1450,22 +1432,22 @@ class TestFieldDeserialization:
         validators_gen = (
             func
             for func in (
-                lambda s: s.lower() == "valid",
-                lambda s: s.lower()[::-1] == "dilav",
+                predicate(lambda s: s.lower() == "valid"),
+                predicate(lambda s: s.lower()[::-1] == "dilav"),
             )
         )
 
         m_colletion_type = [
             fields.String(
                 validate=[
-                    lambda s: s.lower() == "valid",
-                    lambda s: s.lower()[::-1] == "dilav",
+                    predicate(lambda s: s.lower() == "valid"),
+                    predicate(lambda s: s.lower()[::-1] == "dilav"),
                 ]
             ),
             fields.String(
                 validate=(
-                    lambda s: s.lower() == "valid",
-                    lambda s: s.lower()[::-1] == "dilav",
+                    predicate(lambda s: s.lower() == "valid"),
+                    predicate(lambda s: s.lower()[::-1] == "dilav"),
                 )
             ),
             fields.String(validate=validators_gen),
@@ -1476,13 +1458,42 @@ class TestFieldDeserialization:
             with pytest.raises(ValidationError, match="Invalid value."):
                 field.deserialize("invalid")
 
-    def test_field_deserialization_with_custom_error_message(self):
-        field = fields.String(
-            validate=lambda s: s.lower() == "valid",
-            error_messages={"validator_failed": "Bad value."},
-        )
-        with pytest.raises(ValidationError, match="Bad value."):
-            field.deserialize("invalid")
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        (
+            pytest.param(fields.List(fields.String()), ["foo", "bar"], id="List"),
+            pytest.param(
+                fields.Tuple((fields.String(), fields.Integer())),
+                ("foo", 42),
+                id="Tuple",
+            ),
+            pytest.param(fields.String(), "valid", id="String"),
+            pytest.param(fields.UUID(), uuid.uuid4(), id="UUID"),
+            pytest.param(fields.Integer(), 42, id="Integer"),
+            pytest.param(fields.Float(), 42.3, id="Float"),
+            pytest.param(fields.Decimal(), decimal.Decimal("42.3"), id="Decimal"),
+            pytest.param(fields.Boolean(), True, id="Boolean"),
+            pytest.param(fields.DateTime(), dt.datetime(2014, 8, 21), id="DateTime"),
+            pytest.param(fields.Time(), dt.time(10, 15), id="Time"),
+            pytest.param(fields.Date(), dt.date(2014, 8, 21), id="Date"),
+            pytest.param(fields.TimeDelta(), dt.timedelta(days=1), id="TimeDelta"),
+            pytest.param(fields.Dict(), {"foo": "bar"}, id="Dict"),
+            pytest.param(fields.Url(), "https://mallow.com", id="Url"),
+            pytest.param(fields.Email(), "barbara37@example.net", id="Email"),
+            pytest.param(fields.IP(), ipaddress.IPv4Address("67.60.134.65"), id="IP"),
+            pytest.param(
+                fields.IPv4(), ipaddress.IPv4Address("55.81.158.106"), id="IPv4"
+            ),
+            pytest.param(
+                fields.IPv6(),
+                ipaddress.IPv6Address("89f4:41b6:b97e:ad48:8480:1fda:a811:d1a5"),
+                id="IPv6",
+            ),
+            pytest.param(fields.Enum(GenderEnum), GenderEnum.non_binary, id="Enum"),
+        ),
+    )
+    def test_fields_accept_internal_types(self, field, value):
+        assert field.deserialize(value) == value
 
 
 # No custom deserialization behavior, so a dict is returned
@@ -1494,13 +1505,13 @@ class SimpleUserSchema(Schema):
 class Validator(Schema):
     email = fields.Email()
     colors = fields.Str(validate=validate.OneOf(["red", "blue"]))
-    age = fields.Integer(validate=lambda n: n > 0)
+    age = fields.Integer(validate=validate.Range(min=0, min_inclusive=False))
 
 
 class Validators(Schema):
     email = fields.Email()
     colors = fields.Str(validate=validate.OneOf(["red", "blue"]))
-    age = fields.Integer(validate=[lambda n: n > 0, lambda n: n < 100])
+    age = fields.Integer(validate=[validate.Range(1, 99)])
 
 
 class TestSchemaDeserialization:
@@ -1809,16 +1820,14 @@ class TestSchemaDeserialization:
         assert "Something went wrong" in errors["foo"]
 
     def test_multiple_errors_can_be_stored_for_a_field(self):
-        def validate_with_bool(n):
-            return False
+        def validate1(n):
+            raise ValidationError("error one")
 
-        def validate_with_error(n):
-            raise ValidationError("foo is not valid")
+        def validate2(n):
+            raise ValidationError("error two")
 
         class MySchema(Schema):
-            foo = fields.Raw(
-                required=True, validate=[validate_with_bool, validate_with_error]
-            )
+            foo = fields.Raw(required=True, validate=[validate1, validate2])
 
         with pytest.raises(ValidationError) as excinfo:
             MySchema().load({"foo": "bar"})
@@ -1828,11 +1837,11 @@ class TestSchemaDeserialization:
         assert len(errors["foo"]) == 2
 
     def test_multiple_errors_can_be_stored_for_an_email_field(self):
-        def validate_with_bool(val):
-            return False
+        def validate(val):
+            raise ValidationError("Invalid value.")
 
         class MySchema(Schema):
-            email = fields.Email(validate=[validate_with_bool])
+            email = fields.Email(validate=[validate])
 
         with pytest.raises(ValidationError) as excinfo:
             MySchema().load({"email": "foo"})
@@ -1841,11 +1850,11 @@ class TestSchemaDeserialization:
         assert "Not a valid email address." in errors["email"][0]
 
     def test_multiple_errors_can_be_stored_for_a_url_field(self):
-        def validate_with_bool(val):
-            return False
+        def validator(val):
+            raise ValidationError("Not a valid URL.")
 
         class MySchema(Schema):
-            url = fields.Url(validate=[validate_with_bool])
+            url = fields.Url(validate=[validator])
 
         with pytest.raises(ValidationError) as excinfo:
             MySchema().load({"url": "foo"})
@@ -2055,18 +2064,26 @@ class TestSchemaDeserialization:
         assert data == {"foo": "hi", "bar": "okay", "alpha.beta": "woah!"}
 
 
-validators_gen = (func for func in [lambda x: x <= 24, lambda x: 18 <= x])
+validators_gen = (
+    func for func in [predicate(lambda x: x <= 24), predicate(lambda x: 18 <= x)]
+)
 
-validators_gen_float = (func for func in [lambda f: f <= 4.1, lambda f: f >= 1.0])
+validators_gen_float = (
+    func for func in [predicate(lambda f: f <= 4.1), predicate(lambda f: f >= 1.0)]
+)
 
 validators_gen_str = (
-    func for func in [lambda n: len(n) == 3, lambda n: n[1].lower() == "o"]
+    func
+    for func in [
+        predicate(lambda n: len(n) == 3),
+        predicate(lambda n: n[1].lower() == "o"),
+    ]
 )
 
 
 class TestValidation:
     def test_integer_with_validator(self):
-        field = fields.Integer(validate=lambda x: 18 <= x <= 24)
+        field = fields.Integer(validate=validate.Range(18, 24))
         out = field.deserialize("20")
         assert out == 20
         with pytest.raises(ValidationError):
@@ -2075,8 +2092,12 @@ class TestValidation:
     @pytest.mark.parametrize(
         "field",
         [
-            fields.Integer(validate=[lambda x: x <= 24, lambda x: 18 <= x]),
-            fields.Integer(validate=(lambda x: x <= 24, lambda x: 18 <= x)),
+            fields.Integer(
+                validate=[predicate(lambda x: x <= 24), predicate(lambda x: 18 <= x)]
+            ),
+            fields.Integer(
+                validate=(predicate(lambda x: x <= 24), predicate(lambda x: 18 <= x))
+            ),
             fields.Integer(validate=validators_gen),
         ],
     )
@@ -2089,8 +2110,12 @@ class TestValidation:
     @pytest.mark.parametrize(
         "field",
         [
-            fields.Float(validate=[lambda f: f <= 4.1, lambda f: f >= 1.0]),
-            fields.Float(validate=(lambda f: f <= 4.1, lambda f: f >= 1.0)),
+            fields.Float(
+                validate=[predicate(lambda f: f <= 4.1), predicate(lambda f: f >= 1.0)]
+            ),
+            fields.Float(
+                validate=(predicate(lambda f: f <= 4.1), predicate(lambda f: f >= 1.0))
+            ),
             fields.Float(validate=validators_gen_float),
         ],
     )
@@ -2100,14 +2125,14 @@ class TestValidation:
             field.deserialize(4.2)
 
     def test_string_validator(self):
-        field = fields.String(validate=lambda n: len(n) == 3)
+        field = fields.String(validate=validate.Length(equal=3))
         assert field.deserialize("Joe") == "Joe"
         with pytest.raises(ValidationError):
             field.deserialize("joseph")
 
     def test_function_validator(self):
         field = fields.Function(
-            lambda d: d.name.upper(), validate=lambda n: len(n) == 3
+            lambda d: d.name.upper(), validate=validate.Length(equal=3)
         )
         assert field.deserialize("joe")
         with pytest.raises(ValidationError):
@@ -2118,11 +2143,17 @@ class TestValidation:
         [
             fields.Function(
                 lambda d: d.name.upper(),
-                validate=[lambda n: len(n) == 3, lambda n: n[1].lower() == "o"],
+                validate=[
+                    validate.Length(equal=3),
+                    predicate(lambda n: n[1].lower() == "o"),
+                ],
             ),
             fields.Function(
                 lambda d: d.name.upper(),
-                validate=(lambda n: len(n) == 3, lambda n: n[1].lower() == "o"),
+                validate=(
+                    predicate(lambda n: len(n) == 3),
+                    predicate(lambda n: n[1].lower() == "o"),
+                ),
             ),
             fields.Function(lambda d: d.name.upper(), validate=validators_gen_str),
         ],
@@ -2135,21 +2166,21 @@ class TestValidation:
     def test_method_validator(self):
         class MethodSerializer(Schema):
             name = fields.Method(
-                "get_name", deserialize="get_name", validate=lambda n: len(n) == 3
+                "get_name", deserialize="get_name", validate=validate.Length(equal=3)
             )
 
             def get_name(self, val):
                 return val.upper()
 
         assert MethodSerializer().load({"name": "joe"})
-        with pytest.raises(ValidationError, match="Invalid value."):
+        with pytest.raises(ValidationError, match="Length must be 3."):
             MethodSerializer().load({"name": "joseph"})
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/269
     def test_nested_data_is_stored_when_validation_fails(self):
         class SchemaA(Schema):
             x = fields.Integer()
-            y = fields.Integer(validate=lambda n: n > 0)
+            y = fields.Integer(validate=validate.Range(min=1))
             z = fields.Integer()
 
         class SchemaB(Schema):
@@ -2169,19 +2200,6 @@ class TestValidation:
         data, errors = excinfo.value.valid_data, excinfo.value.messages
         assert "y" in errors["n"]
         assert data == {"w": 90, "n": {"x": 90, "z": 180}}
-
-    def test_false_value_validation(self):
-        class Sch(Schema):
-            lamb = fields.Raw(validate=lambda x: x is False)
-            equal = fields.Raw(validate=Equal(False))
-
-        errors = Sch().validate({"lamb": False, "equal": False})
-        assert not errors
-        errors = Sch().validate({"lamb": True, "equal": True})
-        assert "lamb" in errors
-        assert errors["lamb"] == ["Invalid value."]
-        assert "equal" in errors
-        assert errors["equal"] == ["Must be equal to False."]
 
     def test_nested_partial_load(self):
         class SchemaA(Schema):

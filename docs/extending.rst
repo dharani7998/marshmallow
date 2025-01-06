@@ -28,12 +28,12 @@ Data pre-processing and post-processing methods can be registered using the `pre
     result = schema.load({"name": "Steve", "slug": "Steve Loria "})
     result["slug"]  # => 'steve-loria'
 
-Passing "many"
-++++++++++++++
+Passing collections when ``many=True``
+++++++++++++++++++++++++++++++++++++++
 
 By default, pre- and post-processing methods receive one object/datum at a time, transparently handling the ``many`` parameter passed to the ``Schema``'s :func:`~marshmallow.Schema.dump`/:func:`~marshmallow.Schema.load` method at runtime.
 
-In cases where your pre- and post-processing methods needs to handle the input collection when processing multiple objects, add ``pass_many=True`` to the method decorators.
+In cases where your pre- and post-processing methods needs to handle the input collection when processing multiple objects, add ``pass_collection=True`` to the method decorators.
 
 Your method will then receive the input data (which may be a single datum or a collection, depending on the dump/load call).
 
@@ -58,12 +58,12 @@ One common use case is to wrap data in a namespace upon serialization and unwrap
             assert key is not None, "Envelope key undefined"
             return key
 
-        @pre_load(pass_many=True)
+        @pre_load(pass_collection=True)
         def unwrap_envelope(self, data, many, **kwargs):
             key = self.get_envelope_key(many)
             return data[key]
 
-        @post_dump(pass_many=True)
+        @post_dump(pass_collection=True)
         def wrap_with_envelope(self, data, many, **kwargs):
             key = self.get_envelope_key(many)
             return {key: data}
@@ -155,21 +155,21 @@ Pre-/post-processor invocation order
 
 In summary, the processing pipeline for deserialization is as follows:
 
-1. ``@pre_load(pass_many=True)`` methods
-2. ``@pre_load(pass_many=False)`` methods
+1. ``@pre_load(pass_collection=True)`` methods
+2. ``@pre_load(pass_collection=False)`` methods
 3. ``load(in_data, many)`` (validation and deserialization)
 4. ``@validates`` methods (field validators)
 5. ``@validates_schema`` methods (schema validators)
-6. ``@post_load(pass_many=True)`` methods
-7. ``@post_load(pass_many=False)`` methods
+6. ``@post_load(pass_collection=True)`` methods
+7. ``@post_load(pass_collection=False)`` methods
 
-The pipeline for serialization is similar, except that the ``pass_many=True`` processors are invoked *after* the ``pass_many=False`` processors and there are no validators.
+The pipeline for serialization is similar, except that the ``pass_collection=True`` processors are invoked *after* the ``pass_collection=False`` processors and there are no validators.
 
-1. ``@pre_dump(pass_many=False)`` methods
-2. ``@pre_dump(pass_many=True)`` methods
+1. ``@pre_dump(pass_collection=False)`` methods
+2. ``@pre_dump(pass_collection=True)`` methods
 3. ``dump(obj, many)`` (serialization)
-4. ``@post_dump(pass_many=False)`` methods
-5. ``@post_dump(pass_many=True)`` methods
+4. ``@post_dump(pass_collection=False)`` methods
+5. ``@post_dump(pass_collection=True)`` methods
 
 
 .. warning::
@@ -184,7 +184,7 @@ The pipeline for serialization is similar, except that the ``pass_many=True`` pr
 
         # YES
         class MySchema(Schema):
-            field_a = fields.Field()
+            field_a = fields.Raw()
 
             @pre_load
             def preprocess(self, data, **kwargs):
@@ -202,7 +202,7 @@ The pipeline for serialization is similar, except that the ``pass_many=True`` pr
 
         # NO
         class MySchema(Schema):
-            field_a = fields.Field()
+            field_a = fields.Raw()
 
             @pre_load
             def step1(self, data, **kwargs):
@@ -425,12 +425,12 @@ Then we create a custom :class:`Schema` that uses our options class.
     class NamespacedSchema(Schema):
         OPTIONS_CLASS = NamespaceOpts
 
-        @pre_load(pass_many=True)
+        @pre_load(pass_collection=True)
         def unwrap_envelope(self, data, many, **kwargs):
             key = self.opts.plural_name if many else self.opts.name
             return data[key]
 
-        @post_dump(pass_many=True)
+        @post_dump(pass_collection=True)
         def wrap_with_envelope(self, data, many, **kwargs):
             key = self.opts.plural_name if many else self.opts.name
             return {key: data}
@@ -453,19 +453,6 @@ Our application schemas can now inherit from our custom schema class.
     user = User("Keith", email="keith@stones.com")
     result = ser.dump(user)
     result  # {"user": {"name": "Keith", "email": "keith@stones.com"}}
-
-Using context
--------------
-
-The ``context`` attribute of a `Schema` is a general-purpose store for extra information that may be needed for (de)serialization. It may be used in both ``Schema`` and ``Field`` methods.
-
-.. code-block:: python
-
-    schema = UserSchema()
-    # Make current HTTP request available to
-    # custom fields, schema methods, schema validators, etc.
-    schema.context["request"] = request
-    schema.dump(user)
 
 Custom error messages
 ---------------------

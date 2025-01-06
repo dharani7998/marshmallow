@@ -246,7 +246,7 @@ There are a number of built-in validators in the :ref:`marshmallow.validate <api
 You may implement your own validators.
 A validator is a callable that accepts a single argument, the value to validate.
 If validation fails, the callable should raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>`
-with a useful error message or return ``False`` (for a generic error message).
+with an error message.
 
 .. code-block:: python
 
@@ -487,42 +487,6 @@ If you are consuming and producing data that does not match your schema, you can
     # {'name': u'Mike',
     # 'email': 'foo@bar.com'}
 
-
-.. _meta_options:
-
-Implicit field creation
------------------------
-
-When your model has many attributes, specifying the field type for every attribute can get repetitive, especially when many of the attributes are already native Python datatypes.
-
-The ``fields`` option allows you to specify implicitly-created fields. marshmallow will choose an appropriate field type based on the attribute's type.
-
-Let's refactor our User schema to be more concise.
-
-.. code-block:: python
-
-    class UserSchema(Schema):
-        uppername = fields.Function(lambda obj: obj.name.upper())
-
-        class Meta:
-            fields = ("name", "email", "created_at", "uppername")
-
-Note that ``name`` will be automatically formatted as a :class:`String <marshmallow.fields.String>` and ``created_at`` will be formatted as a :class:`DateTime <marshmallow.fields.DateTime>`.
-
-.. note::
-
-    If instead you want to specify which field names to include *in addition* to the explicitly declared fields, you can use the ``additional`` option.
-
-    The schema below is equivalent to above:
-
-    .. code-block:: python
-
-        class UserSchema(Schema):
-            uppername = fields.Function(lambda obj: obj.name.upper())
-
-            class Meta:
-                # No need to include 'uppername'
-                additional = ("name", "email", "created_at")
 
 Next steps
 ----------
