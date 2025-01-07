@@ -105,6 +105,13 @@ Previously-deprecated API have been removed, including:
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 - Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
 
+3.24.1 (2025-01-06)
+*******************
+
+Bug fixes:
+
+- Typing: Fix typing for `class_registry.get_class <marshmallow.class_registry.get_class>` (:pr:`2735`).
+
 3.24.0 (2025-01-06)
 *******************
 
