@@ -1853,19 +1853,15 @@ _EnumType = typing.TypeVar("_EnumType", bound=EnumType)
 class Enum(Field[_EnumType]):
     """An Enum field (de)serializing enum members by symbol (name) or by value.
 
-        :param enum Enum: Enum class
-        :param boolean|Schema|Field by_value: Whether to (de)serialize by value or by name,
-            or Field class or instance to use to (de)serialize by value. Defaults to False.
+    :param enum Enum: Enum class
+    :param boolean|Schema|Field by_value: Whether to (de)serialize by value or by name,
+        or Field class or instance to use to (de)serialize by value. Defaults to False.
 
-        If `by_value` is `False` (default), enum members are (de)serialized by symbol (name).
-    <<<<<<< HEAD
-        If it is `True`, they are (de)serialized by value using `marshmallow.fields.Raw`.
-    =======
-        If it is `True`, they are (de)serialized by value using :class:`Raw`.
-    >>>>>>> dev
-        If it is a field instance or class, they are (de)serialized by value using this field.
+    If `by_value` is `False` (default), enum members are (de)serialized by symbol (name).
+    If it is `True`, they are (de)serialized by value using `marshmallow.fields.Raw`.
+    If it is a field instance or class, they are (de)serialized by value using this field.
 
-        .. versionadded:: 3.18.0
+    .. versionadded:: 3.18.0
     """
 
     default_error_messages = {
