@@ -483,15 +483,15 @@ along with the valid data from the `ValidationError.valid_data
         errors = err.messages
         valid_data = err.valid_data
 
-:meth:`Schema.validate() <marshmallow.Schema.validate>` always returns a dictionary of validation errors (same as 2.x with ``strict=False``).
+`Schema.validate <marshmallow.Schema.validate>` always returns a dictionary of validation errors (same as 2.x with ``strict=False``).
 
 .. code-block:: python
 
     schema.validate({"email": "invalid"})
     # {'email': ['Not a valid email address.']}
 
-Setting the ``strict`` option on ``class Meta`` has no effect on `Schema` behavior.
-Passing ``strict=True`` or ``strict=False`` to the `Schema` constructor
+Setting the ``strict`` option on ``class Meta`` has no effect on `Schema <marshmallow.Schema>` behavior.
+Passing ``strict=True`` or ``strict=False`` to the `Schema <marshmallow.Schema>` constructor
 will raise a :exc:`TypeError`.
 
 
@@ -562,7 +562,7 @@ and `validates_schema <marshmallow.decorators.validates_schema>` receive
 Validation does not occur on serialization
 ******************************************
 
-:meth:`Schema.dump() <marshmallow.Schema.dump>` will no longer validate and collect error messages. You *must* validate
+`Schema.dump <marshmallow.Schema.dump>` will no longer validate and collect error messages. You *must* validate
 your data before serializing it.
 
 .. code-block:: python
@@ -1117,7 +1117,7 @@ The same key is used for serialization and deserialization.
         email = fields.Email(data_key="CamelCasedEmail")
 
 It is not possible to specify a different key for serialization and deserialization on the same field.
-This use case is covered by using two different `Schema`.
+This use case is covered by using two different `Schema <marshmallow.Schema>`.
 
 .. code-block:: python
 
@@ -1622,7 +1622,7 @@ As a consequence of this new behavior, the ``skip_missing`` class Meta option ha
 Pre-processing and post-processing methods
 ******************************************
 
-The pre- and post-processing API was significantly improved for better consistency and flexibility. The `pre_load <marshmallow.decorators.pre_load>`, `post_load <marshmallow.decorators.post_load>`, `pre_dump <marshmallow.decorators.pre_dump>`, and `post_dump <marshmallow.decorators.post_dump>` should be used to define processing hooks. `Schema.preprocessor` and `Schema.data_handler` are removed.
+The pre- and post-processing API was significantly improved for better consistency and flexibility. The `pre_load <marshmallow.decorators.pre_load>`, `post_load <marshmallow.decorators.post_load>`, `pre_dump <marshmallow.decorators.pre_dump>`, and `post_dump <marshmallow.decorators.post_dump>` should be used to define processing hooks. ``Schema.preprocessor`` and ``Schema.data_handler`` are removed.
 
 
 .. code-block:: python
@@ -1669,7 +1669,7 @@ See the :doc:`Extending Schemas <extending>` page for more information on the ``
 Schema validators
 *****************
 
-Similar to pre-processing and post-processing methods, schema validators are now defined as methods. Decorate schema validators with `validates_schema <marshmallow.decorators.validates_schema>`. `Schema.validator` is removed.
+Similar to pre-processing and post-processing methods, schema validators are now defined as methods. Decorate schema validators with `validates_schema <marshmallow.decorators.validates_schema>`. ``Schema.validator`` is removed.
 
 .. code-block:: python
 
@@ -1704,7 +1704,7 @@ Similar to pre-processing and post-processing methods, schema validators are now
 Custom accessors and error handlers
 ***********************************
 
-Custom accessors and error handlers are now defined as methods. `Schema.accessor` and `Schema.error_handler` are deprecated.
+Custom accessors and error handlers are now defined as methods. ``Schema.accessor`` and ``Schema.error_handler`` are deprecated.
 
 .. code-block:: python
 
@@ -1812,7 +1812,7 @@ The :exc:`MarshallingError` and :exc:`UnmarshallingError` exceptions are depreca
 Handle ``ValidationError`` in strict mode
 -----------------------------------------
 
-When using `strict` mode, you should handle `ValidationErrors` when calling `Schema.dump` and `Schema.load`.
+When using `strict` mode, you should handle `ValidationErrors` when calling `Schema.dump <marshmallow.Schema.dump>` and `Schema.load <marshmallow.Schema.load>`.
 
 .. code-block:: python
 
@@ -2087,7 +2087,7 @@ Perhaps the largest change is in how objects get serialized. Serialization occur
 
 .. note::
 
-    Some crucial parts of the pre-1.0 API have been retained to ease the transition. You can still pass an object to a `Schema` constructor and access the `Schema.data` and `Schema.errors` properties. The `is_valid` method, however, has been completely removed. It is recommended that you migrate to the new API to prevent future releases from breaking your code.
+    Some crucial parts of the pre-1.0 API have been retained to ease the transition. You can still pass an object to a `Schema <marshmallow.Schema>` constructor and access the `Schema.data` and `Schema.errors` properties. The `is_valid` method, however, has been completely removed. It is recommended that you migrate to the new API to prevent future releases from breaking your code.
 
 The Fields interface was also reworked in 1.0 to make it easier to define custom fields with their own serialization and deserialization behavior. Custom fields now implement :meth:`Field._serialize` and :meth:`Field._deserialize`.
 
@@ -2133,11 +2133,11 @@ Another major change in 1.0 is that multiple validation errors can be stored for
 
 Other notable changes:
 
-- Serialized output is no longer an `OrderedDict` by default. You must explicitly set the `ordered` class Meta option to `True` .
-- :class:`Serializer` has been renamed to :class:`Schema`, but you can still import `marshmallow.Serializer` (which is aliased to :class:`Schema`).
+- Serialized output is no longer an ``OrderedDict`` by default. You must explicitly set the `ordered` class Meta option to `True` .
+- ``Serializer`` has been renamed to `Schema <marshmallow.schema.Schema>`, but you can still import ``marshmallow.Serializer`` (which is aliased to `Schema <marshmallow.Schema>`).
 - ``datetime`` objects serialize to ISO8601-formatted strings by default (instead of RFC821 format).
 - The ``fields.validated`` decorator was removed, as it is no longer necessary given the new Fields interface.
-- `Schema.factory` class method was removed.
+- ``Schema.factory`` class method was removed.
 
 .. seealso::
 

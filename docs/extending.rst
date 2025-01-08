@@ -1,5 +1,3 @@
-.. module:: marshmallow
-
 Extending schemas
 =================
 
@@ -213,6 +211,8 @@ The pipeline for serialization is similar, except that the ``pass_collection=Tru
             def step2(self, data, **kwargs):
                 do_step2(data)
 
+.. _schema_validation:
+
 Schema-level validation
 -----------------------
 
@@ -347,7 +347,7 @@ However, if you want to specify how values are accessed from an object, you can 
 Custom error handling
 ---------------------
 
-By default, :meth:`Schema.load` will raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` if passed invalid data.
+By default, `Schema.load <marshmallow.Schema.load>` will raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` if passed invalid data.
 
 You can specify a custom error-handling function for a :class:`Schema` by overriding the `handle_error <marshmallow.Schema.handle_error>`  method. The method receives the :exc:`ValidationError <marshmallow.exceptions.ValidationError>` and the original input data to be deserialized.
 

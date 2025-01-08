@@ -105,6 +105,14 @@ Previously-deprecated API have been removed, including:
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 - Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
 
+3.24.2 (unreleased)
+*******************
+
+Documentation:
+
+- Add top-level API back to docs (:issue:`2739`).
+  Thanks :user:`llucax` for reporting.
+
 3.24.1 (2025-01-06)
 *******************
 
@@ -399,7 +407,7 @@ Bug fixes:
 - Don't expose ``Field``\s as ``Schema`` attributes. This reverts a change
   introduced in 3.12.0 that causes issues when field names conflict with
   ``Schema`` attributes or methods. ``Fields``\s are still accessible on a
-   ``Schema`` instance through the ``fields`` attribute. (:pr:`1843`)
+  ``Schema`` instance through the ``fields`` attribute. (:pr:`1843`)
 
 3.12.1 (2021-05-10)
 *******************
@@ -974,7 +982,7 @@ Bug fixes:
 Other changes:
 
 - *Backwards-incompatible*: ``_serialize`` and ``_deserialize`` methods of
-all ``fields.Field`` subclasses must accept ``**kwargs`` (:pr:`1007`).
+  all ``fields.Field`` subclasses must accept ``**kwargs`` (:pr:`1007`).
 
 
 3.0.0b18 (2018-10-15)

@@ -1,7 +1,7 @@
 Custom fields
 =============
 
-There are three ways to create a custom-formatted field for a `Schema`:
+There are three ways to create a custom-formatted field for a `Schema <marshmallow.Schema>`:
 
 - Create a custom :class:`Field <marshmallow.fields.Field>` class
 - Use a :class:`Method <marshmallow.fields.Method>` field
