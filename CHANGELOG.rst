@@ -1,6 +1,14 @@
 Changelog
 ---------
 
+3.24.2 (unreleased)
+*******************
+
+Documentation:
+
+- Add top-level API back to docs (:issue:`2739`).
+  Thanks :user:`llucax` for reporting.
+
 3.24.1 (2025-01-06)
 *******************
 
