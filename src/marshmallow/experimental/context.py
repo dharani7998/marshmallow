@@ -28,6 +28,8 @@ Example usage:
         # {'name_suffixed': 'foobar'}
 """
 
+from __future__ import annotations
+
 import contextlib
 import contextvars
 import typing
@@ -43,8 +45,9 @@ class Context(contextlib.AbstractContextManager, typing.Generic[_T]):
         self.context = context
         self.token: contextvars.Token | None = None
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> Context[_T]:
         self.token = _CURRENT_CONTEXT.set(self.context)
+        return self
 
     def __exit__(self, *args, **kwargs) -> None:
         _CURRENT_CONTEXT.reset(typing.cast(contextvars.Token, self.token))
