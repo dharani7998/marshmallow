@@ -2071,6 +2071,7 @@ class Constant(Field[_ContantType]):
 
 # Aliases
 URL = Url
+
 Str = String
 Bool = Boolean
 Int = Integer

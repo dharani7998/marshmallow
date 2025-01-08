@@ -105,8 +105,15 @@ Previously-deprecated API have been removed, including:
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 - Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
 
-3.24.2 (unreleased)
+3.24.2 (2025-01-08)
 *******************
+
+Changes:
+
+- Don't override ``__new__`` to avoid breaking usages of `inspect.signature` with
+  `Field <marshmallow.fields.Field>` classes.
+  This allows marshmallow-sqlalchemy users to upgrade marshmallow without
+  upgrading to marshmallow-sqlalchemy>=1.1.1.
 
 Documentation:
 
@@ -134,7 +141,7 @@ Bug fixes:
 
 Deprecations:
 
-- Custom validators should raise a `ValidationError <marshmallow.exceptions.ValidationError>` for invalid values. 
+- Custom validators should raise a `ValidationError <marshmallow.exceptions.ValidationError>` for invalid values.
   Returning `False`` is no longer supported .
 - Deprecate ``context`` parameter of `Schema <marshmallow.schema.Schema>` (:issue:`1826`).
   Use `contextVars.ContextVar` to pass context data instead.
