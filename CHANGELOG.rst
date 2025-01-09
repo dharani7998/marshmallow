@@ -105,6 +105,24 @@ Previously-deprecated API have been removed, including:
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 - Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
 
+3.25.0 (2025-01-09)
+*******************
+
+Features:
+
+- Typing: Improve type annotations for ``SchemaMeta.get_declared_fields`` (:pr:`2742`).
+
+Bug fixes:
+
+- Typing: Relax type annotation for ``Schema.opts`` to allow subclasses to define their own
+  options classes (:pr:`2744`).
+
+Other changes:
+
+- Restore ``marshmallow.base.SchemaABC`` for backwards-compatibility (:issue:`2743`).
+  Note that this class is deprecated and will be removed in marshmallow 4.
+  Use `marshmallow.schema.Schema` as a base class for type-checking instead.
+
 3.24.2 (2025-01-08)
 *******************
 
