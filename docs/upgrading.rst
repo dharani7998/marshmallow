@@ -710,7 +710,7 @@ raised at the end of the process.
 When reporting error messages as `dict`, the keys should refer to subitems
 of the item the message refers to, and the values should be error messages.
 
-See the "Schema-level Validation" section of :doc:`Extending Schemas <extending>`
+See the "Schema-level Validation" section of :doc:`extending`
 page for an example.
 
 Schemas raise ``ValidationError`` when deserializing data with unknown keys
@@ -1664,7 +1664,7 @@ The pre- and post-processing API was significantly improved for better consisten
             data["field_a"] -= 1
             return data
 
-See the :doc:`Extending Schemas <extending>` page for more information on the ``pre_*`` and ``post_*`` decorators.
+See the :doc:`extending` page for more information on the ``pre_*`` and ``post_*`` decorators.
 
 Schema validators
 *****************
@@ -2005,7 +2005,7 @@ The default error messages for many fields and validators have been changed for 
 More
 ****
 
-For a full list of changes in 2.0, see the :doc:`Changelog <changelog>`.
+For a full list of changes in 2.0, see the :doc:`changelog <changelog>`.
 
 
 Upgrading to 1.2
@@ -2141,4 +2141,4 @@ Other notable changes:
 
 .. seealso::
 
-    See the :doc:`Changelog <changelog>` for a  more complete listing of added features, bugfixes and breaking changes.
+    See the :doc:`changelog <changelog>` for a more complete listing of added features, bugfixes and breaking changes.

@@ -1,14 +1,14 @@
 import importlib.metadata
 
-import alabaster
-
 extensions = [
+    "autodocsumm",
     "sphinx.ext.autodoc",
+    "sphinx.ext.autodoc.typehints",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
-    "alabaster",
+    "sphinx_copybutton",
     "sphinx_issues",
-    "autodocsumm",
+    "sphinxext.opengraph",
 ]
 
 primary_domain = "py"
@@ -24,53 +24,35 @@ source_suffix = ".rst"
 master_doc = "index"
 
 project = "marshmallow"
-copyright = '<a href="https://stevenloria.com">Steven Loria</a> and contributors'
+copyright = "Steven Loria and contributors"
 
 version = release = importlib.metadata.version("marshmallow")
 
 exclude_patterns = ["_build"]
+# Ignore WARNING: more than one target found for cross-reference 'Schema': marshmallow.schema.Schema, marshmallow.Schema
+suppress_warnings = ["ref.python"]
 
 # THEME
 
-html_theme_path = [alabaster.get_path()]
-html_theme = "alabaster"
-html_static_path = ["_static"]
-templates_path = ["_templates"]
-html_show_sourcelink = False
-
+html_theme = "furo"
 html_theme_options = {
-    "logo": "marshmallow-logo.png",
-    "description": "Object serialization and deserialization, lightweight and fluffy.",
-    "description_font_style": "italic",
-    "github_user": "marshmallow-code",
-    "github_repo": "marshmallow",
-    "github_banner": True,
-    "github_type": "star",
-    "opencollective": "marshmallow",
-    "tidelift_url": (
-        "https://tidelift.com/subscription/pkg/pypi-marshmallow"
-        "?utm_source=marshmallow&utm_medium=referral&utm_campaign=docs"
-    ),
-    "code_font_size": "0.8em",
-    "warn_bg": "#FFC",
-    "warn_border": "#EEE",
-    # Used to populate the useful-links.html template
-    "extra_nav_links": {
-        "marshmallow @ PyPI": "https://pypi.org/project/marshmallow/",
-        "marshmallow @ GitHub": "https://github.com/marshmallow-code/marshmallow",
-        "Issue Tracker": "https://github.com/marshmallow-code/marshmallow/issues",
-        "Ecosystem": "https://github.com/marshmallow-code/marshmallow/wiki/Ecosystem",
+    "light_logo": "marshmallow-logo-with-title.png",
+    "dark_logo": "marshmallow-logo-with-title-for-dark-theme.png",
+    "sidebar_hide_name": True,
+    "light_css_variables": {
+        # Serif system font stack: https://systemfontstack.com/
+        "font-stack": "Iowan Old Style, Apple Garamond, Baskerville, Times New Roman, Droid Serif, Times, Source Serif Pro, serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;",
     },
+    "top_of_page_buttons": ["view"],
 }
+html_favicon = "_static/favicon.ico"
+html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+html_show_sourcelink = False
+ogp_image = "_static/marshmallow-logo-200.png"
 
-html_sidebars = {
-    "index": ["about.html", "searchbox.html", "donate.html", "useful-links.html"],
-    "**": [
-        "about.html",
-        "searchbox.html",
-        "donate.html",
-        "useful-links.html",
-        "localtoc.html",
-        "relations.html",
-    ],
-}
+# Strip the dollar prompt when copying code
+# https://sphinx-copybutton.readthedocs.io/en/latest/use.html#strip-and-configure-input-prompts-for-code-cells
+copybutton_prompt_text = "$ "
+
+autodoc_typehints = "both"

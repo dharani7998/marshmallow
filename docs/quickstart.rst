@@ -37,7 +37,7 @@ Create a schema by defining a class with variables mapping attribute names to :c
 
 .. seealso::
 
-    For a full reference on the available field classes, see the :ref:`API Docs <api_fields>`.
+    For a full reference on the available field classes, see the :ref:`fields module documentation <api_fields>`.
 
 Creating schemas from dictionaries
 ----------------------------------
@@ -280,7 +280,7 @@ You may also pass a collection (list, tuple, generator) of callables to ``valida
 
     You can register a custom error handler function for a schema by overriding the 
     :func:`handle_error <Schema.handle_error>` method. 
-    See the :doc:`Extending Schemas <extending>` page for more info.
+    See the :doc:`extending` page for more info.
 
 .. seealso::
 
@@ -488,7 +488,7 @@ If you are consuming and producing data that does not match your schema, you can
 
 Next steps
 ----------
-- Need to represent relationships between objects? See the :doc:`Nesting Schemas <nesting>` page.
-- Want to create your own field type? See the :doc:`Custom Fields <custom_fields>` page.
-- Need to add schema-level validation, post-processing, or error handling behavior? See the :doc:`Extending Schemas <extending>` page.
-- For example applications using marshmallow, check out the :doc:`Examples <examples>` page.
+- Need to represent relationships between objects? See the :doc:`nesting` page.
+- Want to create your own field type? See the :doc:`custom_fields` page.
+- Need to add schema-level validation, post-processing, or error handling behavior? See the :doc:`extending` page.
+- For example applications using marshmallow, check out the :doc:`examples` page.

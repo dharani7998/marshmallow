@@ -1,17 +1,27 @@
-.. marshmallow documentation master file
+.. meta::
+   :description:
+        marshmallow is an ORM/ODM/framework-agnostic library for converting complex datatypes, such as objects, to and from native Python datatypes.
 
-********************************************
-marshmallow: simplified object serialization
-********************************************
+***********
+marshmallow
+***********
 
-Release v\ |version|. (:doc:`Changelog <changelog>`)
+*Object serialization and deserialization, lightweight and fluffy.*
 
-.. include:: about.rst.inc
+Release v\ |version|. (:doc:`changelog`)
+
+----
+
+.. include:: ../README.rst
+    :start-after: .. start elevator-pitch
+    :end-before: .. end elevator-pitch
+
+Ready to get started? Go on to the :doc:`quickstart` or check out some :doc:`examples <examples>`.
 
 Upgrading from an older version?
 ================================
 
-See the :doc:`Upgrading to Newer Releases <upgrading>` page for notes on getting your code up-to-date with the latest version.
+See the :doc:`upgrading` page for notes on getting your code up-to-date with the latest version.
 
 Why another library?
 =====================
@@ -21,21 +31,22 @@ See :doc:`this document <why>` to learn about what makes marshmallow unique.
 Sponsors
 ========
 
-marshmallow is sponsored by `Route4Me <https://route4me.com>`_.
-
-.. image:: https://github.com/user-attachments/assets/018c2e23-032e-4a11-98da-8b6dc25b9054
-    :target: https://route4me.com
-    :alt: Routing Planner
-
-Support this project by becoming a sponsor (or ask your company to support this project by becoming a sponsor).
-Your logo will be displayed here with a link to your website. [`Become a sponsor`_]
-
-.. _`Become a sponsor`: https://opencollective.com/marshmallow#sponsor
-
-Guide
-=====
+.. include:: ../README.rst
+    :start-after: .. start sponsors
+    :end-before: .. end sponsors
 
 .. toctree::
+    :maxdepth: 1
+    :hidden:
+    :titlesonly:
+
+    Home <self>
+
+Usage guide
+===========
+
+.. toctree::
+    :caption: Usage guide
     :maxdepth: 2
 
     install
@@ -46,27 +57,38 @@ Guide
     examples
 
 
-API Reference
+API reference
 =============
 
 .. toctree::
-    :maxdepth: 2
+    :caption: API reference
+    :maxdepth: 1
 
     api_reference
 
-Project Info
-============
+Project info
+=============
 
 .. toctree::
+    :caption: Project info
     :maxdepth: 1
 
     why
     changelog
     upgrading
-    ecosystem
     whos_using
     license
     authors
     contributing
     code_of_conduct
     kudos
+    donate
+
+.. toctree::
+    :hidden:
+    :caption: Useful links
+
+    marshmallow @ PyPI <https://pypi.org/project/marshmallow/>
+    marshmallow @ GitHub <https://github.com/marshmallow-code/marshmallow/>
+    Issue Tracker <https://github.com/marshmallow-code/marshmallow/issues>
+    Ecosystem <https://github.com/marshmallow-code/marshmallow/wiki/Ecosystem>

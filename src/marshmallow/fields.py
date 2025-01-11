@@ -155,16 +155,17 @@ class Field(typing.Generic[_InternalType]):
     :param dump_only: If `True` skip this field during deserialization, otherwise
         its value will be present in the deserialized object. In the context of an
         HTTP API, this effectively marks the field as "read-only".
-    :param dict error_messages: Overrides for `Field.default_error_messages`.
+    :param error_messages: Overrides for `Field.default_error_messages`.
     :param metadata: Extra information to be stored as field metadata.
 
     .. versionchanged:: 3.0.0b8
         Add ``data_key`` parameter for the specifying the key in the input and
         output data. This parameter replaced both ``load_from`` and ``dump_to``.
-
     .. versionchanged:: 3.13.0
         Replace ``missing`` and ``default`` parameters with ``load_default`` and ``dump_default``.
-
+    .. versionchanged:: 3.24.0
+        `Field <marshmallow.fields.Field>` should no longer be used as a field within a `Schema <marshmallow.Schema>`.
+        Use `Raw <marshmallow.fields.Raw>` or another `Field <marshmallow.fields.Field>` subclass instead.
     .. versionchanged:: 4.0.0
         Remove ``context`` property.
     """
@@ -266,9 +267,9 @@ class Field(typing.Generic[_InternalType]):
     ) -> _InternalType:
         """Return the value for a given key from an object.
 
-        :param object obj: The object to get the value from.
-        :param str attr: The attribute/key in `obj` to get the value from.
-        :param callable accessor: A callable used to retrieve the value of `attr` from
+        :param obj: The object to get the value from.
+        :param attr: The attribute/key in `obj` to get the value from.
+        :param accessor: A callable used to retrieve the value of `attr` from
             the object `obj`. Defaults to `marshmallow.utils.get_value`.
         """
         accessor_func = accessor or utils.get_value
@@ -391,10 +392,10 @@ class Field(typing.Generic[_InternalType]):
 
     def _bind_to_schema(self, field_name: str, parent: Schema | Field) -> None:
         """Update field with values from its parent schema. Called by
-        `Schema._bind_field <marshmallow.Schema._bind_field>`.
+                `Schema._bind_field <marshmallow.Schema._bind_field>`.
 
-        :param str field_name: Field name set in schema.
-        :param Schema|Field parent: Parent object.
+        :param field_name: Field name set in schema.
+        :param parent: Parent object.
         """
         self.parent = self.parent or parent
         self.name = self.name or field_name
@@ -417,9 +418,9 @@ class Field(typing.Generic[_InternalType]):
                     return str(value).title()
 
         :param value: The value to be serialized.
-        :param str attr: The attribute or key on the object to be serialized.
-        :param object obj: The object the value was pulled from.
-        :param dict kwargs: Field-specific keyword arguments.
+        :param attr: The attribute or key on the object to be serialized.
+        :param obj: The object the value was pulled from.
+        :param kwargs: Field-specific keyword arguments.
         :return: The serialized value
         """
         return value
@@ -652,7 +653,7 @@ class Pluck(Nested):
         loaded = AlbumSchema().load(in_data)  # => {'artist': {'id': 42}}
         dumped = AlbumSchema().dump(loaded)  # => {'artist': 42}
 
-    :param Schema nested: The Schema class or class name (string) to nest
+    :param nested: The Schema class or class name (string) to nest
     :param str field_name: The key to pluck a value from.
     :param kwargs: The same keyword arguments that :class:`Nested` receives.
     """
@@ -906,8 +907,12 @@ _NumType = typing.TypeVar("_NumType")
 class Number(Field[_NumType]):
     """Base class for number fields. This class should not be used within schemas.
 
-    :param bool as_string: If `True`, format the serialized value as a string.
+    :param as_string: If `True`, format the serialized value as a string.
     :param kwargs: The same keyword arguments that :class:`Field` receives.
+
+    .. versionchanged:: 3.24.0
+        `Number <marshmallow.fields.Number>` should no longer be used as a field within a `Schema <marshmallow.Schema>`.
+        Use `Integer <marshmallow.fields.Integer>`, `Float <marshmallow.fields.Float>`, or `Decimal <marshmallow.fields.Decimal>` instead.
     """
 
     num_type: type[_NumType]
@@ -985,9 +990,9 @@ class Integer(Number[int]):
 class Float(Number[float]):
     """A double as an IEEE-754 double precision string.
 
-    :param bool allow_nan: If `True`, `NaN`, `Infinity` and `-Infinity` are allowed,
+    :param allow_nan: If `True`, `NaN`, `Infinity` and `-Infinity` are allowed,
         even though they are illegal according to the JSON specification.
-    :param bool as_string: If `True`, format the value as a string.
+    :param as_string: If `True`, format the value as a string.
     :param kwargs: The same keyword arguments that :class:`Number` receives.
     """
 
@@ -1540,6 +1545,9 @@ class Mapping(Field[_MappingType]):
         `keys` and `values` arguments to prevent content validation.
 
     .. versionadded:: 3.0.0rc4
+    .. versionchanged:: 3.24.0
+        `Mapping <marshmallow.fields.Mapping>` should no longer be used as a field within a `Schema <marshmallow.Schema>`.
+        Use `Dict <marshmallow.fields.Dict>` instead.
     """
 
     mapping_type: type[_MappingType]
@@ -1736,7 +1744,7 @@ class Email(String):
 class IP(Field[typing.Union[ipaddress.IPv4Address, ipaddress.IPv6Address]]):
     """A IP address field.
 
-    :param bool exploded: If `True`, serialize ipv6 address in long form, ie. with groups
+    :param exploded: If `True`, serialize ipv6 address in long form, ie. with groups
         consisting entirely of zeros included.
 
     .. versionadded:: 3.8.0
@@ -1802,7 +1810,7 @@ class IPInterface(
 
     see https://python.readthedocs.io/en/latest/library/ipaddress.html#interface-objects
 
-    :param bool exploded: If `True`, serialize ipv6 interface in long form, ie. with groups
+    :param exploded: If `True`, serialize ipv6 interface in long form, ie. with groups
         consisting entirely of zeros included.
     """
 
@@ -1854,8 +1862,8 @@ _EnumType = typing.TypeVar("_EnumType", bound=EnumType)
 class Enum(Field[_EnumType]):
     """An Enum field (de)serializing enum members by symbol (name) or by value.
 
-    :param enum Enum: Enum class
-    :param boolean|Schema|Field by_value: Whether to (de)serialize by value or by name,
+    :param enum: Enum class
+    :param by_value: Whether to (de)serialize by value or by name,
         or Field class or instance to use to (de)serialize by value. Defaults to False.
 
     If `by_value` is `False` (default), enum members are (de)serialized by symbol (name).
@@ -1931,10 +1939,10 @@ class Enum(Field[_EnumType]):
 class Method(Field):
     """A field that takes the value returned by a `Schema <marshmallow.Schema>` method.
 
-    :param str serialize: The name of the Schema method from which
+    :param serialize: The name of the Schema method from which
         to retrieve the value. The method must take an argument ``obj``
         (in addition to self) that is the object to be serialized.
-    :param str deserialize: Optional name of the Schema method for deserializing
+    :param deserialize: Optional name of the Schema method for deserializing
         a value The method must take a single argument ``value``, which is the
         value to deserialize.
 
