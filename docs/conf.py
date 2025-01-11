@@ -37,7 +37,7 @@ html_theme_options = {
     "light_logo": "marshmallow-logo-with-title.png",
     "dark_logo": "marshmallow-logo-with-title-for-dark-theme.png",
     "source_repository": "https://github.com/marshmallow-code/marshmallow",
-    "source_branch": "3.x-line",
+    "source_branch": "dev",
     "source_directory": "docs/",
     "sidebar_hide_name": True,
     "light_css_variables": {
