@@ -90,6 +90,7 @@ def test_load_validation_error_stores_input_data_and_valid_data():
     except ValidationError as err:
         # err.data is the raw input data
         assert err.data == input_data
+        assert isinstance(err.valid_data, dict)
         assert "always_valid" in err.valid_data
         # err.valid_data contains valid, deserialized data
         assert isinstance(err.valid_data["always_valid"], dt.datetime)
@@ -108,6 +109,7 @@ def test_load_resets_error_fields():
     with pytest.raises(ValidationError) as excinfo:
         schema.load({"name": "Joe", "email": "not-valid"})
     exc = excinfo.value
+    assert isinstance(exc.messages, dict)
     assert len(exc.messages.keys()) == 1
 
     with pytest.raises(ValidationError) as excinfo:
@@ -118,7 +120,7 @@ def test_load_resets_error_fields():
 def test_errored_fields_do_not_appear_in_output():
     class MyField(fields.Field[int]):
         # Make sure validation fails during serialization
-        def _serialize(self, val, attr, obj):
+        def _serialize(self, value, attr, obj, **kwargs):
             raise ValidationError("oops")
 
     def validator(val):
@@ -133,6 +135,7 @@ def test_errored_fields_do_not_appear_in_output():
     data, errors = excinfo.value.valid_data, excinfo.value.messages
 
     assert "foo" in errors
+    assert isinstance(data, dict)
     assert "foo" not in data
 
 
@@ -356,7 +359,9 @@ def test_nested_on_bind_field_hook():
         foo = fields.Nested(NestedSchema)
 
     schema = MySchema()
-    assert schema.fields["foo"].schema.fields["bar"].metadata["fname"] == "bar"
+    foo_field = schema.fields["foo"]
+    assert isinstance(foo_field, fields.Nested)
+    assert foo_field.schema.fields["bar"].metadata["fname"] == "bar"
 
 
 class TestValidate:
@@ -661,7 +666,7 @@ def test_custom_type_error_message():
     s = ErrorSchema()
     u = ["Joe"]
     with pytest.raises(ValidationError) as excinfo:
-        s.load(u)
+        s.load(u)  # type: ignore[arg-type]
     errors = excinfo.value.messages
     assert custom_message in errors["_schema"]
 
@@ -697,14 +702,13 @@ def test_custom_error_messages_with_inheritance():
         error_messages = {"type": child_type_message}
 
     unknown_user = {"name": "Eleven", "age": 12}
-    type_user = 11
 
     parent_schema = ParentSchema()
     with pytest.raises(ValidationError) as excinfo:
         parent_schema.load(unknown_user)
     assert parent_unknown_message in excinfo.value.messages["age"]
     with pytest.raises(ValidationError) as excinfo:
-        parent_schema.load(type_user)
+        parent_schema.load(11)  # type: ignore[arg-type]
     assert parent_type_message in excinfo.value.messages["_schema"]
 
     child_schema = ChildSchema()
@@ -712,7 +716,7 @@ def test_custom_error_messages_with_inheritance():
         child_schema.load(unknown_user)
     assert parent_unknown_message in excinfo.value.messages["age"]
     with pytest.raises(ValidationError) as excinfo:
-        child_schema.load(type_user)
+        child_schema.load(11)  # type: ignore[arg-type]
     assert child_type_message in excinfo.value.messages["_schema"]
 
 
@@ -1487,7 +1491,7 @@ def test_only_and_exclude_as_string(param):
         foo = fields.Raw()
 
     with pytest.raises(StringNotCollectionError):
-        MySchema(**{param: "foo"})
+        MySchema(**{param: "foo"})  # type: ignore[arg-type]
 
 
 def test_nested_with_sets():
@@ -1605,7 +1609,7 @@ class MySchema(Schema):
     email = fields.Email()
     age = fields.Integer()
 
-    def handle_error(self, errors, obj, **kwargs):
+    def handle_error(self, error, data, *args, **kwargs):
         raise CustomError("Something bad happened")
 
     def test_load_with_custom_error_handler(self):
@@ -1617,6 +1621,7 @@ class MySchema(Schema):
             def handle_error(self, error, data, **kwargs):
                 assert type(error) is ValidationError
                 assert "email" in error.messages
+                assert isinstance(error.messages, dict)
                 assert list(error.messages.keys()) == ["email"]
                 assert data == in_data
                 raise CustomError("Something bad happened")
@@ -1634,6 +1639,7 @@ class MySchema(Schema):
             def handle_error(self, error, data, **kwargs):
                 assert type(error) is ValidationError
                 assert "email" in error.messages
+                assert isinstance(error.messages, dict)
                 assert list(error.messages.keys()) == ["email"]
                 assert data == in_data
                 raise CustomError("Something bad happened")
@@ -1655,6 +1661,7 @@ class MySchema(Schema):
             def handle_error(self, error, data, **kwargs):
                 assert type(error) is ValidationError
                 assert "num" in error.messages
+                assert isinstance(error.messages, dict)
                 assert list(error.messages.keys()) == ["num"]
                 assert data == in_data
                 raise CustomError("Something bad happened")
@@ -1674,6 +1681,7 @@ class MySchema(Schema):
 
             def handle_error(self, error, data, **kwargs):
                 assert type(error) is ValidationError
+                assert isinstance(error.messages, dict)
                 assert list(error.messages.keys()) == ["_schema"]
                 assert data == in_data
                 raise CustomError("Something bad happened")
@@ -1888,7 +1896,7 @@ class TestNestedSchema:
 
     def test_nested_fields_must_be_passed_a_serializer(self, blog):
         class BadNestedFieldSchema(BlogSchema):
-            user = fields.Nested(fields.String)
+            user = fields.Nested(fields.String)  # type: ignore[arg-type]
 
         with pytest.raises(ValueError):
             BadNestedFieldSchema().dump(blog)
@@ -1949,9 +1957,10 @@ class TestNestedSchema:
 
         data = {"child": {"num": 1, "extra": 1}}
         if unknown is None or unknown == RAISE:
-            with pytest.raises(ValidationError) as exc:
+            with pytest.raises(ValidationError) as excinfo:
                 ParentSchema().load(data)
-                assert exc.messages == {"child": {"extra": ["Unknown field."]}}
+            exc = excinfo.value
+            assert exc.messages == {"child": {"extra": ["Unknown field."]}}
         else:
             output = {
                 INCLUDE: {"child": {"num": 1, "extra": 1}},
@@ -2119,12 +2128,12 @@ def test_serialization_with_required_field():
 
 
 def test_deserialization_with_required_field():
-    in_data = {}
     with pytest.raises(ValidationError) as excinfo:
-        RequiredUserSchema().load(in_data)
+        RequiredUserSchema().load({})
     data, errors = excinfo.value.valid_data, excinfo.value.messages
     assert "name" in errors
     assert "Missing data for required field." in errors["name"]
+    assert isinstance(data, dict)
     # field value should also not be in output data
     assert "name" not in data
 

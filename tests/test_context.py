@@ -31,13 +31,13 @@ class TestContext:
     def test_context_load_dump(self):
         class ContextField(fields.Integer):
             def _serialize(self, value, attr, obj, **kwargs):
-                if (context := Context.get(None)) is not None:
+                if (context := Context[dict].get(None)) is not None:
                     value *= context.get("factor", 1)
                 return super()._serialize(value, attr, obj, **kwargs)
 
             def _deserialize(self, value, attr, data, **kwargs):
                 val = super()._deserialize(value, attr, data, **kwargs)
-                if (context := Context.get(None)) is not None:
+                if (context := Context[dict].get(None)) is not None:
                     val *= context.get("factor", 1)
                 return val
 
@@ -100,19 +100,19 @@ class TestContext:
             inner = fields.Nested(InnerSchema)
 
         ser = CSchema()
-        with Context({"info": "i like bikes"}):
-            obj = {"inner": {}}
+        with Context[dict]({"info": "i like bikes"}):
+            obj: dict[str, dict] = {"inner": {}}
             result = ser.dump(obj)
             assert result["inner"]["likes_bikes"] is True
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/820
     def test_nested_list_fields_inherit_context(self):
         class InnerSchema(Schema):
-            foo = fields.Field()
+            foo = fields.Raw()
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in Context.get():
+                if "foo_context" not in Context[dict].get():
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):
@@ -129,11 +129,11 @@ class TestContext:
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/820
     def test_nested_dict_fields_inherit_context(self):
         class InnerSchema(Schema):
-            foo = fields.Field()
+            foo = fields.Raw()
 
             @validates("foo")
             def validate_foo(self, value):
-                if "foo_context" not in Context.get():
+                if "foo_context" not in Context[dict].get():
                     raise ValidationError("Missing context")
 
         class OuterSchema(Schema):
@@ -154,7 +154,7 @@ class TestContext:
                 raise NotImplementedError
 
         class InnerSchema(Schema):
-            foo = fields.Field()
+            foo = fields.Raw()
 
         class OuterSchema(Schema):
             inner = fields.Nested(InnerSchema())

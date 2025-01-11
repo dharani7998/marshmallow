@@ -87,7 +87,7 @@ class TestFieldSerialization:
 
     def test_function_field_passed_uncallable_object(self):
         with pytest.raises(TypeError):
-            fields.Function("uncallable")
+            fields.Function("uncallable")  # type: ignore[arg-type]
 
     def test_integer_field(self, user):
         field = fields.Integer()
@@ -232,8 +232,8 @@ class TestFieldSerialization:
         field = fields.Enum(HairColorEnum, by_value=True)
         assert field.serialize("hair_color", user) == "black hair"
         user.sex = GenderEnum.male
-        field = fields.Enum(GenderEnum, by_value=True)
-        assert field.serialize("sex", user) == 1
+        field2 = fields.Enum(GenderEnum, by_value=True)
+        assert field2.serialize("sex", user) == 1
         user.some_date = DateEnum.date_1
 
     def test_enum_field_by_value_field_serialization(self, user):
@@ -241,11 +241,11 @@ class TestFieldSerialization:
         field = fields.Enum(HairColorEnum, by_value=fields.String)
         assert field.serialize("hair_color", user) == "black hair"
         user.sex = GenderEnum.male
-        field = fields.Enum(GenderEnum, by_value=fields.Integer)
-        assert field.serialize("sex", user) == 1
+        field2 = fields.Enum(GenderEnum, by_value=fields.Integer)
+        assert field2.serialize("sex", user) == 1
         user.some_date = DateEnum.date_1
-        field = fields.Enum(DateEnum, by_value=fields.Date(format="%d/%m/%Y"))
-        assert field.serialize("some_date", user) == "29/02/2004"
+        field3 = fields.Enum(DateEnum, by_value=fields.Date(format="%d/%m/%Y"))
+        assert field3.serialize("some_date", user) == "29/02/2004"
 
     def test_decimal_field(self, user):
         user.m1 = 12
@@ -483,7 +483,7 @@ class TestFieldSerialization:
         m = fields.Method()
         m.parent = Schema()
 
-        assert m.serialize("", "", "") is missing_
+        assert m.serialize("", "", None) is missing_
 
     def test_serialize_with_data_key_param(self):
         class DumpToSchema(Schema):
@@ -851,13 +851,13 @@ class TestFieldSerialization:
             id = fields.Int()
 
         with pytest.raises(ValueError):
-            fields.List("string")
+            fields.List("string")  # type: ignore[arg-type]
         expected_msg = (
             "The list elements must be a subclass or instance of "
             "marshmallow.fields.Field"
         )
         with pytest.raises(ValueError, match=expected_msg):
-            fields.List(ASchema)
+            fields.List(ASchema)  # type: ignore[arg-type]
 
     def test_datetime_integer_tuple_field(self):
         obj = DateTimeIntegerTuple((dt.datetime.now(dt.timezone.utc), 42))
@@ -876,15 +876,15 @@ class TestFieldSerialization:
             id = fields.Int()
 
         with pytest.raises(ValueError):
-            fields.Tuple(["string"])
+            fields.Tuple(["string"])  # type: ignore[arg-type]
         with pytest.raises(ValueError):
-            fields.Tuple(fields.String)
+            fields.Tuple(fields.String)  # type: ignore[arg-type]
         expected_msg = (
             'Elements of "tuple_fields" must be subclasses or '
             "instances of marshmallow.fields.Field."
         )
         with pytest.raises(ValueError, match=expected_msg):
-            fields.Tuple([ASchema])
+            fields.Tuple([ASchema])  # type: ignore[arg-type]
 
     def test_serialize_does_not_apply_validators(self, user):
         field = fields.Raw(validate=lambda x: False)

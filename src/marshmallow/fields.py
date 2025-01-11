@@ -654,9 +654,14 @@ class Pluck(Nested):
         self,
         nested: Schema | SchemaMeta | str | typing.Callable[[], Schema],
         field_name: str,
+        *,
+        many: bool = False,
+        unknown: str | None = None,
         **kwargs: Unpack[_BaseFieldKwargs],
     ):
-        super().__init__(nested, only=(field_name,), **kwargs)
+        super().__init__(
+            nested, only=(field_name,), many=many, unknown=unknown, **kwargs
+        )
         self.field_name = field_name
 
     @property
@@ -771,7 +776,9 @@ class Tuple(Field[tuple]):
     default_error_messages = {"invalid": "Not a valid tuple."}
 
     def __init__(
-        self, tuple_fields: typing.Iterable[Field], **kwargs: Unpack[_BaseFieldKwargs]
+        self,
+        tuple_fields: typing.Iterable[Field] | typing.Iterable[type[Field]],
+        **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(**kwargs)
         if not utils.is_collection(tuple_fields):
@@ -1155,8 +1162,8 @@ class Boolean(Field[bool]):
     def __init__(
         self,
         *,
-        truthy: set | None = None,
-        falsy: set | None = None,
+        truthy: typing.Iterable | None = None,
+        falsy: typing.Iterable | None = None,
         **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(**kwargs)
@@ -1522,7 +1529,7 @@ class TimeDelta(Field[dt.timedelta]):
             raise self.make_error("invalid") from error
 
 
-_MappingType = typing.TypeVar("_MappingType", bound=collections.abc.Mapping)
+_MappingType = typing.TypeVar("_MappingType", bound=_Mapping)
 
 
 class Mapping(Field[_MappingType]):

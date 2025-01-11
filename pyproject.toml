@@ -92,6 +92,11 @@ warn_unused_ignores = true
 warn_redundant_casts = true
 no_implicit_optional = true
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+check_untyped_defs = true
+disable_error_code = ["call-overload", "index"]
+
 [tool.pytest.ini_options]
 norecursedirs = ".git .ropeproject .tox docs env venv tests/mypy_test_cases"
 addopts = "-v --tb=short"

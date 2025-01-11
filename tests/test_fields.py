@@ -43,7 +43,7 @@ class TestField:
 
     def test_error_raised_if_uncallable_validator_passed(self):
         with pytest.raises(ValueError, match="must be a callable"):
-            fields.Raw(validate="notcallable")
+            fields.Raw(validate="notcallable")  # type: ignore[arg-type]
 
     def test_error_raised_if_missing_is_set_on_required_field(self):
         with pytest.raises(
@@ -53,10 +53,10 @@ class TestField:
 
     def test_custom_field_receives_attr_and_obj(self):
         class MyField(fields.Field[str]):
-            def _deserialize(self, val, attr, data, **kwargs):
+            def _deserialize(self, value, attr, data, **kwargs) -> str:
                 assert attr == "name"
                 assert data["foo"] == 42
-                return val
+                return str(value)
 
         class MySchema(Schema):
             name = MyField()
@@ -66,10 +66,10 @@ class TestField:
 
     def test_custom_field_receives_data_key_if_set(self):
         class MyField(fields.Field[str]):
-            def _deserialize(self, val, attr, data, **kwargs):
+            def _deserialize(self, value, attr, data, **kwargs):
                 assert attr == "name"
                 assert data["foo"] == 42
-                return val
+                return str(value)
 
         class MySchema(Schema):
             Name = MyField(data_key="name")
@@ -79,10 +79,10 @@ class TestField:
 
     def test_custom_field_follows_data_key_if_set(self):
         class MyField(fields.Field[str]):
-            def _serialize(self, val, attr, data):
+            def _serialize(self, value, attr, obj, **kwargs) -> str:
                 assert attr == "name"
-                assert data["foo"] == 42
-                return val
+                assert obj["foo"] == 42
+                return str(value)
 
         class MySchema(Schema):
             name = MyField(data_key="_NaMe")
@@ -95,7 +95,7 @@ class TestParentAndName:
     class MySchema(Schema):
         foo = fields.Raw()
         bar = fields.List(fields.Str())
-        baz = fields.Tuple([fields.Str(), fields.Int()])
+        baz = fields.Tuple((fields.Str(), fields.Int()))
         bax = fields.Dict(fields.Str(), fields.Int())
 
     @pytest.fixture()
@@ -150,8 +150,14 @@ class TestParentAndName:
             pass
 
         schema2 = OtherSchema()
-        assert schema.fields["bar"].inner.root == schema
-        assert schema2.fields["bar"].inner.root == schema2
+
+        bar_field = schema.fields["bar"]
+        assert isinstance(bar_field, fields.List)
+        assert bar_field.inner.root == schema
+
+        bar_field2 = schema2.fields["bar"]
+        assert isinstance(bar_field2, fields.List)
+        assert bar_field2.inner.root == schema2
 
     def test_dict_root_inheritance(self):
         class MySchema(Schema):
@@ -162,10 +168,20 @@ class TestParentAndName:
 
         schema = MySchema()
         schema2 = OtherSchema()
-        assert schema.fields["foo"].key_field.root == schema
-        assert schema.fields["foo"].value_field.root == schema
-        assert schema2.fields["foo"].key_field.root == schema2
-        assert schema2.fields["foo"].value_field.root == schema2
+
+        foo_field = schema.fields["foo"]
+        assert isinstance(foo_field, fields.Dict)
+        assert isinstance(foo_field.key_field, fields.Str)
+        assert isinstance(foo_field.value_field, fields.Int)
+        assert foo_field.key_field.root == schema
+        assert foo_field.value_field.root == schema
+
+        foo_field2 = schema2.fields["foo"]
+        assert isinstance(foo_field2, fields.Dict)
+        assert isinstance(foo_field2.key_field, fields.Str)
+        assert isinstance(foo_field2.value_field, fields.Int)
+        assert foo_field2.key_field.root == schema2
+        assert foo_field2.value_field.root == schema2
 
     # Regression test for https://github.com/marshmallow-code/marshmallow/issues/1357
     def test_datetime_list_inner_format(self, schema):
@@ -246,7 +262,7 @@ class TestNestedField:
     @pytest.mark.parametrize("param", ("only", "exclude"))
     def test_nested_only_and_exclude_as_string(self, param):
         with pytest.raises(StringNotCollectionError):
-            fields.Nested(Schema, **{param: "foo"})
+            fields.Nested(Schema, **{param: "foo"})  # type: ignore[arg-type]
 
     @pytest.mark.parametrize(
         "nested_value",
@@ -320,8 +336,11 @@ class TestListNested:
         class Family(Schema):
             children = fields.List(fields.Nested(Child))
 
-        schema = Family(**{param: ["children.name"]})
-        assert getattr(schema.fields["children"].inner.schema, param) == {"name"}
+        schema = Family(**{param: ["children.name"]})  # type: ignore[arg-type]
+        children_field = schema.fields["children"]
+        assert isinstance(children_field, fields.List)
+        assert isinstance(children_field.inner, fields.Nested)
+        assert getattr(children_field.inner.schema, param) == {"name"}
 
     @pytest.mark.parametrize(
         ("param", "expected_attribute", "expected_dump"),
@@ -339,10 +358,12 @@ class TestListNested:
             age = fields.Integer()
 
         class Family(Schema):
-            children = fields.List(fields.Nested(Child, **{param: ("name", "surname")}))
+            children = fields.List(fields.Nested(Child, **{param: ("name", "surname")}))  # type: ignore[arg-type]
 
-        schema = Family(**{param: ["children.name", "children.age"]})
-        assert getattr(schema.fields["children"].inner, param) == expected_attribute
+        schema = Family(**{param: ["children.name", "children.age"]})  # type: ignore[arg-type]
+        children_field = schema.fields["children"]
+        assert isinstance(children_field, fields.List)
+        assert getattr(children_field.inner, param) == expected_attribute
 
         family = {"children": [{"name": "Lily", "surname": "Martinez", "age": 15}]}
         assert schema.dump(family) == expected_dump
@@ -380,12 +401,13 @@ class TestListNested:
             age = fields.Integer()
 
         class Family(Schema):
-            children = fields.List(fields.Nested(Child(**{param: ("name", "surname")})))
+            children = fields.List(fields.Nested(Child(**{param: ("name", "surname")})))  # type: ignore[arg-type]
 
-        schema = Family(**{param: ["children.name", "children.age"]})
-        assert (
-            getattr(schema.fields["children"].inner.schema, param) == expected_attribute
-        )
+        schema = Family(**{param: ["children.name", "children.age"]})  # type: ignore[arg-type]
+        children_field = schema.fields["children"]
+        assert isinstance(children_field, fields.List)
+        assert isinstance(children_field.inner, fields.Nested)
+        assert getattr(children_field.inner.schema, param) == expected_attribute
 
         family = {"children": [{"name": "Lily", "surname": "Martinez", "age": 15}]}
         assert schema.dump(family) == expected_dump
@@ -424,13 +446,14 @@ class TestListNested:
 
         class Family(Schema):
             children = fields.List(
-                fields.Nested(lambda: Child(**{param: ("name", "surname")}))
+                fields.Nested(lambda: Child(**{param: ("name", "surname")}))  # type: ignore[arg-type]
             )
 
-        schema = Family(**{param: ["children.name", "children.age"]})
-        assert (
-            getattr(schema.fields["children"].inner.schema, param) == expected_attribute
-        )
+        schema = Family(**{param: ["children.name", "children.age"]})  # type: ignore[arg-type]
+        children_field = schema.fields["children"]
+        assert isinstance(children_field, fields.List)
+        assert isinstance(children_field.inner, fields.Nested)
+        assert getattr(children_field.inner.schema, param) == expected_attribute
 
         family = {"children": [{"name": "Lily", "surname": "Martinez", "age": 15}]}
         assert schema.dump(family) == expected_dump
@@ -476,13 +499,14 @@ class TestTupleNested:
         class Family(Schema):
             children = fields.Tuple((fields.Nested(Child), fields.Nested(Child)))
 
-        schema = Family(**{param: ["children.name"]})
-        assert getattr(schema.fields["children"].tuple_fields[0].schema, param) == {
-            "name"
-        }
-        assert getattr(schema.fields["children"].tuple_fields[1].schema, param) == {
-            "name"
-        }
+        schema = Family(**{param: ["children.name"]})  # type: ignore[arg-type]
+        children_field = schema.fields["children"]
+        assert isinstance(children_field, fields.Tuple)
+        field1, field2 = children_field.tuple_fields
+        assert isinstance(field1, fields.Nested)
+        assert isinstance(field2, fields.Nested)
+        assert getattr(field1.schema, param) == {"name"}
+        assert getattr(field2.schema, param) == {"name"}
 
     def test_tuple_nested_partial_propagated_to_nested(self):
         class Child(Schema):
@@ -525,8 +549,11 @@ class TestDictNested:
         class Family(Schema):
             children = fields.Dict(values=fields.Nested(Child))
 
-        schema = Family(**{param: ["children.name"]})
-        assert getattr(schema.fields["children"].value_field.schema, param) == {"name"}
+        schema = Family(**{param: ["children.name"]})  # type: ignore[arg-type]
+        children_field = schema.fields["children"]
+        assert isinstance(children_field, fields.Dict)
+        assert isinstance(children_field.value_field, fields.Nested)
+        assert getattr(children_field.value_field.schema, param) == {"name"}
 
     @pytest.mark.parametrize(
         ("param", "expected"),
@@ -540,11 +567,13 @@ class TestDictNested:
 
         class Family(Schema):
             children = fields.Dict(
-                values=fields.Nested(Child, **{param: ("name", "surname")})
+                values=fields.Nested(Child, **{param: ("name", "surname")})  # type: ignore[arg-type]
             )
 
-        schema = Family(**{param: ["children.name", "children.age"]})
-        assert getattr(schema.fields["children"].value_field, param) == expected
+        schema = Family(**{param: ["children.name", "children.age"]})  # type: ignore[arg-type]
+        children_field = schema.fields["children"]
+        assert isinstance(children_field, fields.Dict)
+        assert getattr(children_field.value_field, param) == expected
 
     def test_dict_nested_partial_propagated_to_nested(self):
         class Child(Schema):

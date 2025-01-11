@@ -77,7 +77,7 @@ def test_get_value():
 
 
 def test_set_value():
-    d = {}
+    d: dict[str, int | dict] = {}
     utils.set_value(d, "foo", 42)
     assert d == {"foo": 42}
 

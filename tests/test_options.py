@@ -140,7 +140,7 @@ class TestIncludeOption:
         assert list(result.keys()) == expected_fields
 
     def test_added_fields_are_inherited(self):
-        class AddFieldsChild(self.AddFieldsSchema):
+        class AddFieldsChild(self.AddFieldsSchema):  # type: ignore[name-defined]
             email = fields.Str()
 
         s = AddFieldsChild()
