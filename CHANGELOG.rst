@@ -105,8 +105,15 @@ Previously-deprecated API have been removed, including:
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 - Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
 
-3.25.1 (unreleased)
+3.25.1 (2025-01-11)
 *******************
+
+Bug fixes:
+
+- Typing: Fix type annotations for `Tuple <marshmallow.fields.Tuple>`,
+  `Boolean <marshmallow.fields.Boolean>`, and `Pluck <marshmallow.fields.Pluck>`
+  constructors (:pr:`2756`).
+- Typing: Fix overload for `marshmallow.class_registry.get_class` (:pr:`2756`).
 
 Documentation:
 
