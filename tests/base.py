@@ -177,7 +177,7 @@ class DummyModel:
 class Uppercased(fields.String):
     """Custom field formatting example."""
 
-    def _serialize(self, value, attr, obj):
+    def _serialize(self, value, attr, obj, **kwargs):
         if value:
             return value.upper()
 
@@ -186,7 +186,7 @@ def get_lowername(obj):
     if obj is None:
         return missing
     if isinstance(obj, dict):
-        return obj.get("name").lower()
+        return obj.get("name", "").lower()
     else:
         return obj.name.lower()
 
@@ -228,7 +228,7 @@ class UserSchema(Schema):
         if obj is None:
             return missing
         if isinstance(obj, dict):
-            age = obj.get("age")
+            age = obj.get("age", 0)
         else:
             age = obj.age
         try:

@@ -119,10 +119,10 @@ def test_decorated_processor_returning_none(unknown):
     schema = PostSchema(unknown=unknown)
     assert schema.dump({"value": 3}) is None
     assert schema.load({"value": 3}) is None
-    schema = PreSchema(unknown=unknown)
-    assert schema.dump({"value": 3}) == {}
+    pre_schema = PreSchema(unknown=unknown)
+    assert pre_schema.dump({"value": 3}) == {}
     with pytest.raises(ValidationError) as excinfo:
-        schema.load({"value": 3})
+        pre_schema.load({"value": 3})
     assert excinfo.value.messages == {"_schema": ["Invalid input type."]}
 
 
@@ -306,15 +306,15 @@ class TestValidatesDecorator:
 
         with pytest.raises(ValidationError) as excinfo:
             schema.load({"foo": 41})
-        errors = excinfo.value.messages
+        assert excinfo.value.messages
         result = excinfo.value.valid_data
-        assert errors
         assert result == {}
 
         with pytest.raises(ValidationError) as excinfo:
             schema.load([{"foo": 42}, {"foo": 43}], many=True)
-        errors = excinfo.value.messages
+        assert excinfo.value.messages
         result = excinfo.value.valid_data
+        assert isinstance(result, list)
         assert len(result) == 2
         assert result[0] == {"foo": 42}
         assert result[1] == {}
@@ -608,7 +608,7 @@ class TestValidatesSchemaDecorator:
 
             @validates_schema(skip_on_field_errors=True)
             def consistency_validation(self, data, **kwargs):
-                errors = {}
+                errors: dict[str, str | dict] = {}
                 if data["bar"]["baz"] != data["foo"]:
                     errors["bar"] = {"baz": "Non-matching value"}
                 if data["bam"] > data["foo"]:

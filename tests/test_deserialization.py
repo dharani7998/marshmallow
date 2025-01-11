@@ -1,3 +1,4 @@
+# mypy: disable-error-code="arg-type"
 import datetime as dt
 import decimal
 import ipaddress
@@ -31,14 +32,14 @@ from tests.base import (
 class MockDateTimeOverflowError(dt.datetime):
     """Used to simulate the possible OverflowError of datetime.fromtimestamp"""
 
-    def fromtimestamp(self, *args, **kwargs):
+    def fromtimestamp(self, *args, **kwargs):  # type: ignore[override]
         raise OverflowError()
 
 
 class MockDateTimeOSError(dt.datetime):
     """Used to simulate the possible OSError of datetime.fromtimestamp"""
 
-    def fromtimestamp(self, *args, **kwargs):
+    def fromtimestamp(self, *args, **kwargs):  # type: ignore[override]
         raise OSError()
 
 
@@ -358,9 +359,9 @@ class TestFieldDeserialization:
         field = MyBoolean()
         assert field.deserialize("yep") is True
 
-        field = fields.Boolean(truthy=("yep",))
-        assert field.deserialize("yep") is True
-        assert field.deserialize(False) is False
+        field2 = fields.Boolean(truthy=("yep",))
+        assert field2.deserialize("yep") is True
+        assert field2.deserialize(False) is False
 
     @pytest.mark.parametrize("in_val", ["notvalid", 123])
     def test_boolean_field_deserialization_with_custom_truthy_values_invalid(
@@ -375,23 +376,19 @@ class TestFieldDeserialization:
         expected_msg = "Not a valid boolean."
         assert str(excinfo.value.args[0]) == expected_msg
 
-        field = fields.Boolean(truthy=("yep",))
+        field2 = fields.Boolean(truthy={"yep"})
         with pytest.raises(ValidationError) as excinfo:
-            field.deserialize(in_val)
+            field2.deserialize(in_val)
         expected_msg = "Not a valid boolean."
         assert str(excinfo.value.args[0]) == expected_msg
 
-        field2 = MyBoolean(error_messages={"invalid": "bad input"})
+        field3 = MyBoolean(error_messages={"invalid": "bad input"})
         with pytest.raises(ValidationError) as excinfo:
-            field2.deserialize(in_val)
+            field3.deserialize(in_val)
         assert str(excinfo.value.args[0]) == "bad input"
 
-        field2 = fields.Boolean(
-            truthy=("yep",), error_messages={"invalid": "bad input"}
-        )
-
     def test_boolean_field_deserialization_with_empty_truthy(self):
-        field = fields.Boolean(truthy=())
+        field = fields.Boolean(truthy=set())
         assert field.deserialize("yep") is True
         assert field.deserialize(True) is True
         assert field.deserialize(False) is False
@@ -1193,16 +1190,16 @@ class TestFieldDeserialization:
     def test_enum_field_by_value_true_deserialization(self):
         field = fields.Enum(HairColorEnum, by_value=True)
         assert field.deserialize("black hair") == HairColorEnum.black
-        field = fields.Enum(GenderEnum, by_value=True)
-        assert field.deserialize(1) == GenderEnum.male
+        field2 = fields.Enum(GenderEnum, by_value=True)
+        assert field2.deserialize(1) == GenderEnum.male
 
     def test_enum_field_by_value_field_deserialization(self):
         field = fields.Enum(HairColorEnum, by_value=fields.String)
         assert field.deserialize("black hair") == HairColorEnum.black
-        field = fields.Enum(GenderEnum, by_value=fields.Integer)
-        assert field.deserialize(1) == GenderEnum.male
-        field = fields.Enum(DateEnum, by_value=fields.Date(format="%d/%m/%Y"))
-        assert field.deserialize("29/02/2004") == DateEnum.date_1
+        field2 = fields.Enum(GenderEnum, by_value=fields.Integer)
+        assert field2.deserialize(1) == GenderEnum.male
+        field3 = fields.Enum(DateEnum, by_value=fields.Date(format="%d/%m/%Y"))
+        assert field3.deserialize("29/02/2004") == DateEnum.date_1
 
     def test_enum_field_by_value_true_invalid_value(self):
         field = fields.Enum(HairColorEnum, by_value=True)
@@ -1211,9 +1208,9 @@ class TestFieldDeserialization:
             match="Must be one of: black hair, brown hair, blond hair, red hair.",
         ):
             field.deserialize("dummy")
-        field = fields.Enum(GenderEnum, by_value=True)
+        field2 = fields.Enum(GenderEnum, by_value=True)
         with pytest.raises(ValidationError, match="Must be one of: 1, 2, 3."):
-            field.deserialize(12)
+            field2.deserialize(12)
 
     def test_enum_field_by_value_field_invalid_value(self):
         field = fields.Enum(HairColorEnum, by_value=fields.String)
@@ -1222,14 +1219,14 @@ class TestFieldDeserialization:
             match="Must be one of: black hair, brown hair, blond hair, red hair.",
         ):
             field.deserialize("dummy")
-        field = fields.Enum(GenderEnum, by_value=fields.Integer)
+        field2 = fields.Enum(GenderEnum, by_value=fields.Integer)
         with pytest.raises(ValidationError, match="Must be one of: 1, 2, 3."):
-            field.deserialize(12)
-        field = fields.Enum(DateEnum, by_value=fields.Date(format="%d/%m/%Y"))
+            field2.deserialize(12)
+        field3 = fields.Enum(DateEnum, by_value=fields.Date(format="%d/%m/%Y"))
         with pytest.raises(
             ValidationError, match="Must be one of: 29/02/2004, 29/02/2008, 29/02/2012."
         ):
-            field.deserialize("28/02/2004")
+            field3.deserialize("28/02/2004")
 
     def test_enum_field_by_value_true_wrong_type(self):
         field = fields.Enum(HairColorEnum, by_value=True)
@@ -1879,16 +1876,14 @@ class TestSchemaDeserialization:
             foo = fields.Raw(required=True)
             bar = fields.Raw(required=True)
 
-        schema_args = {}
-        load_args = {}
+        data = {"foo": 3}
         if partial_schema:
-            schema_args["partial"] = True
+            result = MySchema(partial=True).load(data)
         else:
-            load_args["partial"] = True
-        data = MySchema(**schema_args).load({"foo": 3}, **load_args)
+            result = MySchema().load(data, partial=True)
 
-        assert data["foo"] == 3
-        assert "bar" not in data
+        assert result["foo"] == 3
+        assert "bar" not in result
 
     def test_partial_fields_deserialization(self):
         class MySchema(Schema):
@@ -1904,11 +1899,13 @@ class TestSchemaDeserialization:
         assert "baz" in errors
 
         data = MySchema().load({"foo": 3}, partial=("bar", "baz"))
+        assert isinstance(data, dict)
         assert data["foo"] == 3
         assert "bar" not in data
         assert "baz" not in data
 
         data = MySchema(partial=True).load({"foo": 3}, partial=("bar", "baz"))
+        assert isinstance(data, dict)
         assert data["foo"] == 3
         assert "bar" not in data
         assert "baz" not in data
@@ -2319,4 +2316,5 @@ def test_deserialize_raises_exception_if_input_type_is_incorrect(data, unknown):
     with pytest.raises(ValidationError, match="Invalid input type.") as excinfo:
         MySchema(unknown=unknown).load(data)
     exc = excinfo.value
+    assert isinstance(exc.messages, dict)
     assert list(exc.messages.keys()) == ["_schema"]
