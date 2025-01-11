@@ -29,23 +29,26 @@ copyright = "Steven Loria and contributors"
 version = release = importlib.metadata.version("marshmallow")
 
 exclude_patterns = ["_build"]
+# Ignore WARNING: more than one target found for cross-reference 'Schema': marshmallow.schema.Schema, marshmallow.Schema
+suppress_warnings = ["ref.python"]
 
 # THEME
 
 html_theme = "furo"
 html_theme_options = {
+    "light_logo": "marshmallow-logo-with-title.png",
+    "dark_logo": "marshmallow-logo-with-title-for-dark-theme.png",
     "sidebar_hide_name": True,
     "light_css_variables": {
         # Serif system font stack: https://systemfontstack.com/
         "font-stack": "Iowan Old Style, Apple Garamond, Baskerville, Times New Roman, Droid Serif, Times, Source Serif Pro, serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol;",
     },
+    "top_of_page_buttons": ["view"],
 }
 html_favicon = "_static/favicon.ico"
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
 html_show_sourcelink = False
-# TODO: Dark theme logo
-html_logo = "_static/marshmallow-logo-with-title.png"
 ogp_image = "_static/marshmallow-logo-200.png"
 
 # Strip the dollar prompt when copying code
