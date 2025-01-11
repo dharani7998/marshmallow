@@ -312,15 +312,17 @@ class TestValidatesDecorator:
 
         with pytest.raises(ValidationError) as excinfo:
             schema.load([{"foo": 42}, {"foo": 43}], many=True)
-        assert excinfo.value.messages
+        error_messages = excinfo.value.messages
         result = excinfo.value.valid_data
         assert isinstance(result, list)
         assert len(result) == 2
         assert result[0] == {"foo": 42}
         assert result[1] == {}
-        assert 1 in errors
-        assert "foo" in errors[1]
-        assert errors[1]["foo"] == ["The answer to life the universe and everything."]
+        assert 1 in error_messages
+        assert "foo" in error_messages[1]
+        assert error_messages[1]["foo"] == [
+            "The answer to life the universe and everything."
+        ]
 
     def test_field_not_present(self):
         class BadSchema(ValidatesSchema):
