@@ -1274,8 +1274,8 @@ class DateTime(_TemporalField[dt.datetime]):
     """
 
     SERIALIZATION_FUNCS: dict[str, typing.Callable[[dt.datetime], str | float]] = {
-        "iso": utils.isoformat,
-        "iso8601": utils.isoformat,
+        "iso": dt.datetime.isoformat,
+        "iso8601": dt.datetime.isoformat,
         "rfc": utils.rfcformat,
         "rfc822": utils.rfcformat,
         "timestamp": utils.timestamp,
@@ -1387,7 +1387,10 @@ class Time(_TemporalField[dt.time]):
     :param kwargs: The same keyword arguments that :class:`Field` receives.
     """
 
-    SERIALIZATION_FUNCS = {"iso": utils.to_iso_time, "iso8601": utils.to_iso_time}
+    SERIALIZATION_FUNCS = {
+        "iso": dt.time.isoformat,
+        "iso8601": dt.time.isoformat,
+    }
 
     DESERIALIZATION_FUNCS = {
         "iso": dt.time.fromisoformat,
@@ -1419,7 +1422,10 @@ class Date(_TemporalField[dt.date]):
         "format": '"{input}" cannot be formatted as a date.',
     }
 
-    SERIALIZATION_FUNCS = {"iso": utils.to_iso_date, "iso8601": utils.to_iso_date}
+    SERIALIZATION_FUNCS = {
+        "iso": dt.date.isoformat,
+        "iso8601": dt.date.isoformat,
+    }
 
     DESERIALIZATION_FUNCS = {
         "iso": dt.date.fromisoformat,

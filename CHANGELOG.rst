@@ -31,7 +31,9 @@ As a consequence of this change:
   - YYYY-MM-DD is now accepted as a datetime and deserialized as naive 00:00 AM.
   - `from_iso_date`, `from_iso_time` and `from_iso_datetime` are removed from `marshmallow.utils`.
 
-- *Backwards-incompatible*: `marshmallow.fields.Boolean` no longer serializes non-boolean values.
+- Remove `isoformat`, `to_iso_time` and `to_iso_datetime` from `marshmallow.utils` (:pr:`2766`).
+
+- *Backwards-incompatible*: `marshmallow.fields.Boolean` no longer serializes non-boolean values (:pr:`2725`).
 - *Backwards-incompatible*: Custom validators must raise a `ValidationError <marshmallow.exceptions.ValidationError>` for invalid values.
   Returning `False` is no longer supported (:issue:`1775`).
 - *Backwards-incompatible*: Rename ``schema`` parameter to ``parent`` in `marshmallow.fields.Field._bind_to_schema` (:issue:`1360`).

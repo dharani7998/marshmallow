@@ -135,28 +135,6 @@ def test_rfc_format(value, expected):
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        (dt.datetime(2013, 11, 10, 1, 23, 45), "2013-11-10T01:23:45"),
-        (
-            dt.datetime(2013, 11, 10, 1, 23, 45, 123456, tzinfo=dt.timezone.utc),
-            "2013-11-10T01:23:45.123456+00:00",
-        ),
-        (
-            dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=dt.timezone.utc),
-            "2013-11-10T01:23:45+00:00",
-        ),
-        (
-            dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=central),
-            "2013-11-10T01:23:45-06:00",
-        ),
-    ],
-)
-def test_isoformat(value, expected):
-    assert utils.isoformat(value) == expected
-
-
-@pytest.mark.parametrize(
-    ("value", "expected"),
-    [
         ("Sun, 10 Nov 2013 01:23:45 -0000", dt.datetime(2013, 11, 10, 1, 23, 45)),
         (
             "Sun, 10 Nov 2013 01:23:45 +0000",
