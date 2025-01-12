@@ -94,20 +94,6 @@ def test_set_value():
         utils.set_value(d, "foo.bar", 42)
 
 
-def test_is_keyed_tuple():
-    Point = namedtuple("Point", ["x", "y"])
-    p = Point(24, 42)
-    assert utils.is_keyed_tuple(p) is True
-    t = (24, 42)
-    assert utils.is_keyed_tuple(t) is False
-    d = {"x": 42, "y": 24}
-    assert utils.is_keyed_tuple(d) is False
-    s = "xy"
-    assert utils.is_keyed_tuple(s) is False
-    lst = [24, 42]
-    assert utils.is_keyed_tuple(lst) is False
-
-
 def test_is_collection():
     assert utils.is_collection([1, "foo", {}]) is True
     assert utils.is_collection(("foo", 2.3)) is True

@@ -57,13 +57,6 @@ def is_instance_or_subclass(val, class_) -> bool:
         return isinstance(val, class_)
 
 
-def is_keyed_tuple(obj) -> bool:
-    """Return True if ``obj`` has keyed tuple behavior, such as
-    namedtuples or SQLAlchemy's KeyedTuples.
-    """
-    return isinstance(obj, tuple) and hasattr(obj, "_fields")
-
-
 # https://stackoverflow.com/a/27596917
 def is_aware(datetime: dt.datetime) -> bool:
     return (
