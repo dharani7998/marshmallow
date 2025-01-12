@@ -13,7 +13,6 @@ from marshmallow import (
     Schema,
     class_registry,
     fields,
-    utils,
     validate,
     validates,
     validates_schema,
@@ -433,7 +432,7 @@ def test_dumps_returns_json(user):
 
 
 def test_naive_datetime_field(user, serialized_user):
-    expected = utils.isoformat(user.created)
+    expected = user.created.isoformat()
     assert serialized_user["created"] == expected
 
 
@@ -443,12 +442,12 @@ def test_datetime_formatted_field(user, serialized_user):
 
 
 def test_datetime_iso_field(user, serialized_user):
-    assert serialized_user["created_iso"] == utils.isoformat(user.created)
+    assert serialized_user["created_iso"] == user.created.isoformat()
 
 
 def test_tz_datetime_field(user, serialized_user):
     # Datetime is corrected back to GMT
-    expected = utils.isoformat(user.updated)
+    expected = user.updated.isoformat()
     assert serialized_user["updated"] == expected
 
 
@@ -1596,7 +1595,7 @@ def test_default_dateformat(user):
         updated = fields.DateTime(format="%m-%d")
 
     serialized = DateFormatSchema().dump(user)
-    assert serialized["created"] == utils.isoformat(user.created)
+    assert serialized["created"] == user.created.isoformat()
     assert serialized["updated"] == user.updated.strftime("%m-%d")
 
 

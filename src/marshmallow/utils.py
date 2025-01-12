@@ -132,22 +132,6 @@ def timestamp_ms(value: dt.datetime) -> float:
     return timestamp(value) * 1000
 
 
-def isoformat(datetime: dt.datetime) -> str:
-    """Return the ISO8601-formatted representation of a datetime object.
-
-    :param datetime: The datetime.
-    """
-    return datetime.isoformat()
-
-
-def to_iso_time(time: dt.time) -> str:
-    return dt.time.isoformat(time)
-
-
-def to_iso_date(date: dt.date) -> str:
-    return dt.date.isoformat(date)
-
-
 def ensure_text_type(val: str | bytes) -> str:
     if isinstance(val, bytes):
         val = val.decode("utf-8")
