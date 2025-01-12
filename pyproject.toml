@@ -99,4 +99,3 @@ disable_error_code = ["call-overload", "index"]
 
 [tool.pytest.ini_options]
 norecursedirs = ".git .ropeproject .tox docs env venv tests/mypy_test_cases"
-addopts = "-v --tb=short"

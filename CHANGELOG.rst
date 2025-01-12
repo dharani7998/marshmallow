@@ -104,6 +104,25 @@ Previously-deprecated API have been removed, including:
 - `json_module` class Meta option (deprecated in 3.0.0b3). Use `render_module` instead.
 - `marshmallow.utils.pprint` (deprecated in 3.7.0). Use `pprint.pprint` instead.
 - Remove ``__version__``, ``__parsed_version__``, and ``__version_info__`` attributes which were deprecated in 3.21.0.
+- The ``ordered`` `class Meta <marshmallow.Schema.Meta>` option is removed  (:issue:`2146`) (deprecated in 3.26.0).
+
+3.26.0 (unreleased)
+*******************
+
+Features:
+
+- Typing: Add type annotations and improved documentation for `class Meta <marshmallow.Schema.Meta>` options (:pr:`2760`).
+- Typing: Improve type coverage of `marshmallow.Schema.SchemaMeta` (:pr:`2761`).
+
+Documentation:
+
+- Various documentation improvements (:pr:`2757`, :pr:`2759`).
+
+Deprecations:
+
+- The ``ordered`` `class Meta <marshmallow.Schema.Meta>` option is deprecated (:issue:`2146`, :pr:`2762`). 
+  Field order is already preserved by default. Set `marshmallow.Schema.dict_class` to `collections.OrderedDict` 
+  to maintain the previous behavior.
 
 3.25.1 (2025-01-11)
 *******************
