@@ -118,7 +118,7 @@ Features:
 
 Documentation:
 
-- Various documentation improvements (:pr:`2757`, :pr:`2759`).
+- Various documentation improvements (:pr:`2757`, :pr:`2759`, :pr:`2765`).
 
 Deprecations:
 
