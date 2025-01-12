@@ -56,4 +56,4 @@ ogp_image = "_static/marshmallow-logo-200.png"
 # https://sphinx-copybutton.readthedocs.io/en/latest/use.html#strip-and-configure-input-prompts-for-code-cells
 copybutton_prompt_text = "$ "
 
-autodoc_typehints = "both"
+autodoc_typehints = "description"
