@@ -719,16 +719,17 @@ class Schema(metaclass=SchemaMeta):
 
     def loads(
         self,
-        json_data: str,
+        s: str,
         *,
         many: bool | None = None,
         partial: bool | types.StrSequenceOrSet | None = None,
         unknown: str | None = None,
         **kwargs,
     ):
-        """Same as :meth:`load`, except it takes a JSON string as input.
+        """Same as :meth:`load`, except it uses `marshmallow.Schema.Meta.render_module` to deserialize
+        the passed string before passing data to :meth:`load`.
 
-        :param json_data: A JSON string of the data to deserialize.
+        :param s: A string of the data to deserialize.
         :param many: Whether to deserialize `obj` as a collection. If `None`, the
             value for `self.many` is used.
         :param partial: Whether to ignore missing fields and not require
@@ -744,8 +745,10 @@ class Schema(metaclass=SchemaMeta):
             This method returns the deserialized data rather than a ``(data, errors)`` duple.
             A :exc:`ValidationError <marshmallow.exceptions.ValidationError>` is raised
             if invalid data are passed.
+        .. versionchanged:: 4.0.0
+            Rename ``json_module`` parameter to ``s``.
         """
-        data = self.opts.render_module.loads(json_data, **kwargs)
+        data = self.opts.render_module.loads(s, **kwargs)
         return self.load(data, many=many, partial=partial, unknown=unknown)
 
     def _run_validator(
