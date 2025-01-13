@@ -33,6 +33,8 @@ As a consequence of this change:
 
 - Remove `isoformat`, `to_iso_time` and `to_iso_datetime` from `marshmallow.utils` (:pr:`2766`).
 - Remove `from_rfc`, and `rfcformat` from `marshmallow.utils` (:pr:`2767`).
+- Remove `is_keyed_tuple` from `marshmallow.utils` (:pr:`2768`).
+- Remove `get_fixed_timezone` from `marshmallow.utils` (:pr:`2773`).
 
 - *Backwards-incompatible*: `marshmallow.fields.Boolean` no longer serializes non-boolean values (:pr:`2725`).
 - *Backwards-incompatible*: Custom validators must raise a `ValidationError <marshmallow.exceptions.ValidationError>` for invalid values.
