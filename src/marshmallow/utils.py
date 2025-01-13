@@ -48,14 +48,6 @@ def is_collection(obj) -> bool:
     return is_iterable_but_not_string(obj) and not isinstance(obj, Mapping)
 
 
-def is_instance_or_subclass(val, class_) -> bool:
-    """Return True if ``val`` is either a subclass or instance of ``class_``."""
-    try:
-        return issubclass(val, class_)
-    except TypeError:
-        return isinstance(val, class_)
-
-
 # https://stackoverflow.com/a/27596917
 def is_aware(datetime: dt.datetime) -> bool:
     return (
