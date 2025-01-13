@@ -6,7 +6,6 @@ import datetime as dt
 import inspect
 import typing
 from collections.abc import Mapping
-from email.utils import format_datetime, parsedate_to_datetime
 
 EXCLUDE = "exclude"
 INCLUDE = "include"
@@ -62,22 +61,6 @@ def is_aware(datetime: dt.datetime) -> bool:
     return (
         datetime.tzinfo is not None and datetime.tzinfo.utcoffset(datetime) is not None
     )
-
-
-def from_rfc(datestring: str) -> dt.datetime:
-    """Parse a RFC822-formatted datetime string and return a datetime object.
-
-    https://stackoverflow.com/questions/885015/how-to-parse-a-rfc-2822-date-time-into-a-python-datetime  # noqa: B950
-    """
-    return parsedate_to_datetime(datestring)
-
-
-def rfcformat(datetime: dt.datetime) -> str:
-    """Return the RFC822-formatted representation of a datetime object.
-
-    :param datetime: The datetime.
-    """
-    return format_datetime(datetime)
 
 
 def from_timestamp(value: typing.Any) -> dt.datetime:
