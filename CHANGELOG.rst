@@ -92,6 +92,10 @@ Thanks :user:`ddelange` for the PR.
         UserSchema().dump({"name": "foo"})
         # {'name_suffixed': 'foobar'}
 
+- Methods decorated with `marshmallow.pre_load`, `marshmallow.post_load`, `marshmallow.validates_schema`,
+  receive ``unknown`` as a keyword argument (:pr:`1632`).
+  Thanks :user:`jforand` for the PR.
+
 Deprecations/Removals:
 
 - *Backwards-incompatible*: Remove implicit field creation, i.e. using the ``fields`` or ``additional`` class Meta options with undeclared fields (:issue:`1356`).
