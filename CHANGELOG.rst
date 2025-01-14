@@ -100,6 +100,8 @@ Thanks :user:`ddelange` for the PR.
   Also make it a positional-only argument.
 - Incorrectly declaring a field using a field class rather than instance
   errors at class declaration time (previously happended when the schema was instantiated) (:pr:`2772`).
+- Passing invalid values for ``unknown`` will cause an error in type checkers.
+  Runtime checking is removed (:pr:`2771`).
 
 Deprecations/Removals:
 

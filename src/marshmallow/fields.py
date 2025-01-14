@@ -507,7 +507,7 @@ class Nested(Field):
         only: types.StrSequenceOrSet | None = None,
         exclude: types.StrSequenceOrSet = (),
         many: bool = False,
-        unknown: str | None = None,
+        unknown: types.UnknownOption | None = None,
         **kwargs: Unpack[_BaseFieldKwargs],
     ):
         # Raise error if only or exclude is passed as string, not list of strings
@@ -657,7 +657,7 @@ class Pluck(Nested):
         field_name: str,
         *,
         many: bool = False,
-        unknown: str | None = None,
+        unknown: types.UnknownOption | None = None,
         **kwargs: Unpack[_BaseFieldKwargs],
     ):
         super().__init__(
