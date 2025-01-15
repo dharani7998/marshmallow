@@ -8,25 +8,8 @@ This section documents migration paths to new releases.
 Upgrading to 4.0
 ++++++++++++++++
 
-``Field`` usage
-***************
-
-`Field <marshmallow.fields.Field>` is the base class for all fields and should not be used directly within schemas.
-Only use subclasses of `Field <marshmallow.fields.Field>` in your schemas.
-
-.. code-block:: python
-
-    from marshmallow import Schema, fields
-
-
-    # 3.x
-    class UserSchema(Schema):
-        name = fields.Field()
-
-
-    # 4.x
-    class UserSchema(Schema):
-        name = fields.String()
+``Field`` as a generic class
+****************************
 
 `Field <marshmallow.fields.Field>` is a generic class with a type argument.
 When defining a custom field, the type argument should be used to specify the internal type.
@@ -46,92 +29,21 @@ When defining a custom field, the type argument should be used to specify the in
                 return ""
             return "".join(str(d) for d in value)
 
-        # The return type is inferred to be list[int]
+        # The inferred return type is list[int]
         def _deserialize(self, value, attr, data, **kwargs):
             try:
                 return [int(c) for c in value]
             except ValueError as error:
                 raise ValidationError("Pin codes must contain only digits.") from error
 
-``Number`` and ``Mapping`` fields as base classes
-*************************************************
-
-`Number <marshmallow.fields.Number>` and `Mapping <marshmallow.fields.Mapping>` are bases classes that should not be used within schemas.
-Use their subclasses instead.
-
-.. code-block:: python
-
-    from marshmallow import Schema, fields
-
-
-    # 3.x
-    class PackageSchema(Schema):
-        revision = fields.Number()
-        dependencies = fields.Mapping()
-
-
-    # 4.x
-    class PackageSchema(Schema):
-        revision = fields.Integer()
-        dependencies = fields.Dict()
-
-Validators must raise a ValidationError
-***************************************
-
-In marshmallow 4.0, validators must raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` when the value is invalid.
-Returning `False` from a validator is no longer supported.
-
-.. code-block:: python
-
-    from marshmallow import Schema, fields
-
-
-    # 3.x
-    class UserSchema(Schema):
-        password = fields.String(validate=lambda x: x == "password")
-
-
-    # 4.x
-    def validate_password(val):
-        if val != "password":
-            raise ValidationError("Invalid password.")
-
-
-    class UserSchema(Schema):
-        password = fields.String(validate=validate_password)
-
-
-If you want to use anonymous functions, you can use this helper function.
-
-.. code-block:: python
-
-    import typing
-
-    from marshmallow import Schema, fields
-
-
-    def predicate(
-        func: typing.Callable[[typing.Any], bool],
-    ) -> typing.Callable[[typing.Any], None]:
-        def validate(value: typing.Any) -> None:
-            if func(value) is False:
-                raise ValidationError("Invalid value.")
-
-        return validate
-
-
-    # Usage
-    class UserSchema(Schema):
-        password = fields.String(validate=predicate(lambda x: x == "password"))
-
 New context API
 ***************
 
-Passing context to `Schema <marshmallow.schema.Schema>` classes is no longer supported. Use `contextvars.ContextVar` for passing context to
+Passing context to `Schema <marshmallow.schema.Schema>` classes is removed. Use `contextvars.ContextVar` for passing context to
 fields, pre-/post-processing methods, and validators instead.
 
 marshmallow 4 provides an experimental `Context <marshmallow.experimental.context.Context>`
-manager class that can be used to both set and retrieve context.
+wrapper around `contextvars.ContextVar` that can be used to both set and retrieve context.
 
 .. code-block:: python
 
@@ -225,44 +137,25 @@ To automatically generate schema fields from model classes, consider using a sep
         name = auto_field()
         birthdate = auto_field()
 
-``ordered`` is removed
-**********************
+Remove ``ordered`` from the `SchemaOpts <marshmallow.SchemaOpts>` constructor
+*****************************************************************************
 
-The ``ordered`` class Meta option is removed, since order is already preserved by default.
-
-.. code-block:: python
-
-    from marshmallow import Schema, fields
-
-
-    # 3.x
-    class MySchema(Schema):
-        id = fields.Integer()
-
-        class Meta:
-            ordered = True
-
-
-    # 4.x
-    class MySchema(Schema):
-        id = fields.Integer()
-
-Custom ``SchemaOpts`` classes should remove the ``ordered`` argument from the constructor.
+Subclasses of `marshmallow.SchemaOpts` should remove the ``ordered`` argument from the constructor.
 
 .. code-block:: python
 
     # 3.x
     class CustomOpts(SchemaOpts):
         def __init__(self, meta, ordered=False):
-            super().__init__(meta)
-            self.custom_option = getattr(meta, "meta", False)
+            super().__init__(meta, ordered=ordered)
+            self.custom_option = getattr(meta, "custom_option", False)
 
 
     # 4.x
     class CustomOpts(SchemaOpts):
         def __init__(self, meta):
-            super().__init__(meta, ordered)
-            self.custom_option = getattr(meta, "meta", False)
+            super().__init__(meta)
+            self.custom_option = getattr(meta, "custom_option", False)
 
 ``TimeDelta`` changes
 *********************
@@ -327,17 +220,17 @@ Custom fields that define a `_bind_to_schema <marshmallow.Fields._bind_to_schema
 
     # 3.x
     class MyField(fields.Field):
-        def _bind_to_schema(self, schema, field_name): ...
+        def _bind_to_schema(self, field_name: str, schema: Schema | Field): ...
 
 
     # 4.x
-    class MyField(fields.Field):
-        def _bind_to_schema(self, parent, field_name): ...
+    class MyField(fields.Field[int]):
+        def _bind_to_schema(self, field_name: str, parent: Schema | Field): ...
 
 Use standard library functions to handle RFC 822 and ISO 8601 dates, times, and datetimes
 *****************************************************************************************
 
-ISO 8601 and RFC 822 utilities are removed from ``marshmallow.utils`` in favor
+ISO 8601 and RFC 822 utilities are removed from `marshmallow.utils` in favor
 of using the standard library implementations.
 
 .. code-block:: python
@@ -376,6 +269,139 @@ of using the standard library implementations.
     dt.datetime(2013, 11, 10, 1, 23, 45).isoformat()
     email.utils.parsedate_to_datetime("Sun, 10 Nov 2013 01:23:45 -0000")
     email.utils.format_datetime(dt.datetime(2013, 11, 10, 1, 23, 45))
+
+Upgrading to 3.26
++++++++++++++++++
+
+``ordered`` is deprecated
+*************************
+
+The `ordered <marshmallow.schema.Schema.Meta>` class Meta option is removed, since order is already preserved by default.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # <3.26
+    class MySchema(Schema):
+        id = fields.Integer()
+
+        class Meta:
+            ordered = True
+
+
+    # >=3.26
+    class MySchema(Schema):
+        id = fields.Integer()
+
+.. note::
+
+    You can set `marshmallow.Schema.dict_class` to `collections.OrderedDict` to
+    force the output type of `marshmallow.Schema.dump` to be an `OrderedDict <collections.OrderedDict>`.
+
+Upgrading to 3.24
++++++++++++++++++
+
+``Field`` usage
+***************
+
+`Field <marshmallow.fields.Field>` is the base class for all fields and should not be used directly within schemas.
+Only use subclasses of `Field <marshmallow.fields.Field>` in your schemas.
+Instantiating `Field <marshmallow.fields.Field>` will raise a warning in marshmallow>=3.24 and an error in marshmallow 4.0.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # <3.24
+    class UserSchema(Schema):
+        name = fields.Field()
+
+
+    # >=3.24
+    class UserSchema(Schema):
+        name = fields.String()
+
+``Number`` and ``Mapping`` fields as base classes
+*************************************************
+
+`Number <marshmallow.fields.Number>` and `Mapping <marshmallow.fields.Mapping>` are bases classes that should not be used within schemas.
+Use their subclasses instead.
+Instantiating `Number <marshmallow.fields.Number>` or `Mapping <marshmallow.fields.Mapping>`
+will raise a warning in marshmallow>=3.24 and an error in marshmallow 4.0.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # <3.24
+    class PackageSchema(Schema):
+        revision = fields.Number()
+        dependencies = fields.Mapping()
+
+
+    # >=3.24
+    class PackageSchema(Schema):
+        revision = fields.Integer()
+        dependencies = fields.Dict()
+
+Validators must raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>`
+***************************************************************************************
+
+Validators must raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` when the value is invalid.
+Returning `False` from a validator is deprecated and will be removed in marshmallow 4.0.
+
+.. code-block:: python
+
+    from marshmallow import Schema, fields
+
+
+    # <3.24
+    class UserSchema(Schema):
+        password = fields.String(validate=lambda x: x == "password")
+
+
+    # >=3.24
+    def validate_password(val):
+        if val != "password":
+            raise ValidationError("Invalid password.")
+
+
+    class UserSchema(Schema):
+        password = fields.String(validate=validate_password)
+
+
+If you want to use anonymous functions, you can use this helper function in your code.
+
+.. code-block:: python
+
+    from typing import Any, Callable
+
+    from marshmallow import Schema, fields
+
+
+    def predicate(
+        func: Callable[[Any], bool],
+    ) -> Callable[[Any], None]:
+        def validate(value: Any) -> None:
+            if func(value) is False:
+                raise ValidationError("Invalid value.")
+
+        return validate
+
+
+    # Usage
+    class UserSchema(Schema):
+        password = fields.String(validate=predicate(lambda x: x == "password"))
+
+``context`` is deprecated
+*************************
+
+Passing ``context`` to `Schema <marshmallow.schema.Schema>` classes will raise a warning in marshmallow>=3.24 and will be removed in marshmallow 4.0. Use `contextvars.ContextVar` for passing context to
+fields, :doc:`pre-/post-processing methods <marshmallow.decorators>`, and :doc:`validators <marshmallow.validate>` instead.
 
 Upgrading to 3.13
 +++++++++++++++++
