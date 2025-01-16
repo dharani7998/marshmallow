@@ -382,6 +382,23 @@ class TestValidatesDecorator:
         )
         assert errors == {0: {"foo-name": ["nope"]}, 1: {"foo-name": ["nope"]}}
 
+    def test_validates_accepts_multiple_fields(self):
+        class BadSchema(Schema):
+            foo = fields.String()
+            bar = fields.String(data_key="Bar")
+
+            @validates("foo", "bar")
+            def validate_string(self, data: str):
+                raise ValidationError(f"'{data}' is invalid.")
+
+        schema = BadSchema()
+        with pytest.raises(ValidationError) as excinfo:
+            schema.load({"foo": "data", "Bar": "data2"})
+        assert excinfo.value.messages == {
+            "foo": ["'data' is invalid."],
+            "Bar": ["'data2' is invalid."],
+        }
+
 
 class TestValidatesSchemaDecorator:
     def test_validator_nested_many_invalid_data(self):

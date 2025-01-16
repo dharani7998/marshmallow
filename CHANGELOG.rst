@@ -14,6 +14,8 @@ Features:
   `TimeDelta <marshmallow.fields.TimeDelta>`, and `Enum <marshmallow.fields.Enum>`
   accept their internal value types as valid input (:issue:`1415`).
   Thanks :user:`bitdancer` for the suggestion.
+- `@validates <marshmallow.validates>` accepts multiple field names (:issue:`1960`).
+  Thanks :user:`dpriskorn` for the suggestion and :user:`dharani7998` for the PR.
 
 Other changes:
 
