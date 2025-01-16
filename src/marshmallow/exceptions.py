@@ -1,8 +1,8 @@
 """Exception classes for marshmallow-related errors."""
+
 from __future__ import annotations
 
 import typing
-
 
 # Key used for schema-level validation errors
 SCHEMA = "_schema"
@@ -32,7 +32,7 @@ class ValidationError(MarshmallowError):
         data: typing.Mapping[str, typing.Any]
         | typing.Iterable[typing.Mapping[str, typing.Any]]
         | None = None,
-        valid_data: list[dict[str, typing.Any]] | dict[str, typing.Any] | None = None,
+        valid_data: list[typing.Any] | dict[str, typing.Any] | None = None,
         **kwargs,
     ):
         self.messages = [message] if isinstance(message, (str, bytes)) else message
@@ -47,6 +47,15 @@ class ValidationError(MarshmallowError):
             return self.messages
         return {self.field_name: self.messages}
 
+    @property
+    def messages_dict(self) -> dict[str, typing.Any]:
+        if not isinstance(self.messages, dict):
+            raise TypeError(
+                "cannot access 'messages_dict' when 'messages' is of type "
+                + type(self.messages).__name__
+            )
+        return self.messages
+
 
 class RegistryError(NameError):
     """Raised when an invalid operation is performed on the serializer
@@ -58,5 +67,5 @@ class StringNotCollectionError(MarshmallowError, TypeError):
     """Raised when a string is passed when a list of strings is expected."""
 
 
-class FieldInstanceResolutionError(MarshmallowError, TypeError):
-    """Raised when schema to instantiate is neither a Schema class nor an instance."""
+class _FieldInstanceResolutionError(MarshmallowError, TypeError):
+    """Raised when an argument is passed to a field class that cannot be resolved to a Field instance."""

@@ -1,16 +1,18 @@
 """Tests for field serialization."""
-from collections import namedtuple, OrderedDict
+
 import datetime as dt
-import itertools
 import decimal
-import uuid
 import ipaddress
+import itertools
+import math
+import uuid
+from collections import OrderedDict, namedtuple
 
 import pytest
 
-from marshmallow import Schema, fields, missing as missing_
-
-from tests.base import User, ALL_FIELDS, central
+from marshmallow import Schema, fields
+from marshmallow import missing as missing_
+from tests.base import ALL_FIELDS, DateEnum, GenderEnum, HairColorEnum, User, central
 
 
 class DateTimeList:
@@ -32,24 +34,6 @@ class TestFieldSerialization:
     @pytest.fixture
     def user(self):
         return User("Foo", email="foo@bar.com", age=42)
-
-    @pytest.mark.parametrize(
-        ("value", "expected"), [(42, float(42)), (0, float(0)), (None, None)]
-    )
-    def test_number(self, value, expected, user):
-        field = fields.Number()
-        user.age = value
-        assert field.serialize("age", user) == expected
-
-    def test_number_as_string(self, user):
-        user.age = 42
-        field = fields.Number(as_string=True)
-        assert field.serialize("age", user) == str(float(user.age))
-
-    def test_number_as_string_passed_none(self, user):
-        user.age = None
-        field = fields.Number(as_string=True, allow_none=True)
-        assert field.serialize("age", user) is None
 
     def test_function_field_passed_func(self, user):
         field = fields.Function(lambda obj: obj.name.upper())
@@ -101,19 +85,9 @@ class TestFieldSerialization:
         field = fields.Function(deserialize=lambda obj: None)
         assert field.load_only
 
-    def test_function_field_passed_serialize_with_context(self, user, monkeypatch):
-        class Parent(Schema):
-            pass
-
-        field = fields.Function(
-            serialize=lambda obj, context: obj.name.upper() + context["key"]
-        )
-        field.parent = Parent(context={"key": "BAR"})
-        assert "FOOBAR" == field.serialize("key", user)
-
     def test_function_field_passed_uncallable_object(self):
         with pytest.raises(TypeError):
-            fields.Function("uncallable")
+            fields.Function("uncallable")  # type: ignore[arg-type]
 
     def test_integer_field(self, user):
         field = fields.Integer()
@@ -145,7 +119,6 @@ class TestFieldSerialization:
         assert field.serialize("uuid2", user) is None
 
     def test_ip_address_field(self, user):
-
         ipv4_string = "192.168.0.1"
         ipv6_string = "ffff::ffff"
         ipv6_exploded_string = ipaddress.ip_address("ffff::ffff").exploded
@@ -166,7 +139,6 @@ class TestFieldSerialization:
         assert field_exploded.serialize("ipv6", user) == ipv6_exploded_string
 
     def test_ipv4_address_field(self, user):
-
         ipv4_string = "192.168.0.1"
 
         user.ipv4 = ipaddress.ip_address(ipv4_string)
@@ -178,7 +150,6 @@ class TestFieldSerialization:
         assert field.serialize("empty_ip", user) is None
 
     def test_ipv6_address_field(self, user):
-
         ipv6_string = "ffff::ffff"
         ipv6_exploded_string = ipaddress.ip_address("ffff::ffff").exploded
 
@@ -195,7 +166,6 @@ class TestFieldSerialization:
         assert field_exploded.serialize("ipv6", user) == ipv6_exploded_string
 
     def test_ip_interface_field(self, user):
-
         ipv4interface_string = "192.168.0.1/24"
         ipv6interface_string = "ffff::ffff/128"
         ipv6interface_exploded_string = ipaddress.ip_interface(
@@ -221,7 +191,6 @@ class TestFieldSerialization:
         )
 
     def test_ipv4_interface_field(self, user):
-
         ipv4interface_string = "192.168.0.1/24"
 
         user.ipv4interface = ipaddress.ip_interface(ipv4interface_string)
@@ -233,7 +202,6 @@ class TestFieldSerialization:
         assert field.serialize("empty_ipinterface", user) is None
 
     def test_ipv6_interface_field(self, user):
-
         ipv6interface_string = "ffff::ffff/128"
         ipv6interface_exploded_string = ipaddress.ip_interface(
             "ffff::ffff/128"
@@ -253,6 +221,31 @@ class TestFieldSerialization:
             field_exploded.serialize("ipv6interface", user)
             == ipv6interface_exploded_string
         )
+
+    def test_enum_field_by_symbol_serialization(self, user):
+        user.sex = GenderEnum.male
+        field = fields.Enum(GenderEnum)
+        assert field.serialize("sex", user) == "male"
+
+    def test_enum_field_by_value_true_serialization(self, user):
+        user.hair_color = HairColorEnum.black
+        field = fields.Enum(HairColorEnum, by_value=True)
+        assert field.serialize("hair_color", user) == "black hair"
+        user.sex = GenderEnum.male
+        field2 = fields.Enum(GenderEnum, by_value=True)
+        assert field2.serialize("sex", user) == 1
+        user.some_date = DateEnum.date_1
+
+    def test_enum_field_by_value_field_serialization(self, user):
+        user.hair_color = HairColorEnum.black
+        field = fields.Enum(HairColorEnum, by_value=fields.String)
+        assert field.serialize("hair_color", user) == "black hair"
+        user.sex = GenderEnum.male
+        field2 = fields.Enum(GenderEnum, by_value=fields.Integer)
+        assert field2.serialize("sex", user) == 1
+        user.some_date = DateEnum.date_1
+        field3 = fields.Enum(DateEnum, by_value=fields.Date(format="%d/%m/%Y"))
+        assert field3.serialize("some_date", user) == "29/02/2004"
 
     def test_decimal_field(self, user):
         user.m1 = 12
@@ -404,17 +397,6 @@ class TestFieldSerialization:
         assert isinstance(s, str)
         assert s == "0.00"
 
-    def test_boolean_field_serialization(self, user):
-        field = fields.Boolean()
-
-        user.truthy = "non-falsy-ish"
-        user.falsy = "false"
-        user.none = None
-
-        assert field.serialize("truthy", user) is True
-        assert field.serialize("falsy", user) is False
-        assert field.serialize("none", user) is None
-
     def test_email_field_serialize_none(self, user):
         user.email = None
         field = fields.Email()
@@ -501,7 +483,7 @@ class TestFieldSerialization:
         m = fields.Method()
         m.parent = Schema()
 
-        assert m.serialize("", "", "") is missing_
+        assert m.serialize("", "", None) is missing_
 
     def test_serialize_with_data_key_param(self):
         class DumpToSchema(Schema):
@@ -514,7 +496,7 @@ class TestFieldSerialization:
 
     def test_serialize_with_data_key_as_empty_string(self):
         class MySchema(Schema):
-            name = fields.Field(data_key="")
+            name = fields.Raw(data_key="")
 
         schema = MySchema()
         assert schema.dump({"name": "Grace"}) == {"": "Grace"}
@@ -544,12 +526,44 @@ class TestFieldSerialization:
                 "Sun, 10 Nov 2013 01:23:45 +0000",
             ),
             (
-                central.localize(dt.datetime(2013, 11, 10, 1, 23, 45), is_dst=False),
+                dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=central),
                 "Sun, 10 Nov 2013 01:23:45 -0600",
             ),
         ],
     )
     def test_datetime_field_rfc822(self, fmt, value, expected):
+        field = fields.DateTime(format=fmt)
+        assert field.serialize("d", {"d": value}) == expected
+
+    @pytest.mark.parametrize(
+        ("fmt", "value", "expected"),
+        [
+            ("timestamp", dt.datetime(1970, 1, 1), 0),
+            ("timestamp", dt.datetime(2013, 11, 10, 0, 23, 45), 1384043025),
+            (
+                "timestamp",
+                dt.datetime(2013, 11, 10, 0, 23, 45, tzinfo=dt.timezone.utc),
+                1384043025,
+            ),
+            (
+                "timestamp",
+                dt.datetime(2013, 11, 10, 0, 23, 45, tzinfo=central),
+                1384064625,
+            ),
+            ("timestamp_ms", dt.datetime(2013, 11, 10, 0, 23, 45), 1384043025000),
+            (
+                "timestamp_ms",
+                dt.datetime(2013, 11, 10, 0, 23, 45, tzinfo=dt.timezone.utc),
+                1384043025000,
+            ),
+            (
+                "timestamp_ms",
+                dt.datetime(2013, 11, 10, 0, 23, 45, tzinfo=central),
+                1384064625000,
+            ),
+        ],
+    )
+    def test_datetime_field_timestamp(self, fmt, value, expected):
         field = fields.DateTime(format=fmt)
         assert field.serialize("d", {"d": value}) == expected
 
@@ -567,7 +581,7 @@ class TestFieldSerialization:
                 "2013-11-10T01:23:45+00:00",
             ),
             (
-                central.localize(dt.datetime(2013, 11, 10, 1, 23, 45), is_dst=False),
+                dt.datetime(2013, 11, 10, 1, 23, 45, tzinfo=central),
                 "2013-11-10T01:23:45-06:00",
             ),
         ],
@@ -651,25 +665,25 @@ class TestFieldSerialization:
         )
 
         field = fields.TimeDelta(fields.TimeDelta.DAYS)
-        assert field.serialize("d1", user) == 1
+        assert field.serialize("d1", user) == 1.0000115740856481
         field = fields.TimeDelta(fields.TimeDelta.SECONDS)
-        assert field.serialize("d1", user) == 86401
+        assert field.serialize("d1", user) == 86401.000001
         field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS)
         assert field.serialize("d1", user) == 86401000001
         field = fields.TimeDelta(fields.TimeDelta.HOURS)
-        assert field.serialize("d1", user) == 24
+        assert field.serialize("d1", user) == 24.000277778055555
 
         field = fields.TimeDelta(fields.TimeDelta.DAYS)
-        assert field.serialize("d2", user) == 1
+        assert field.serialize("d2", user) == 1.0000115740856481
         field = fields.TimeDelta(fields.TimeDelta.SECONDS)
-        assert field.serialize("d2", user) == 86401
+        assert field.serialize("d2", user) == 86401.000001
         field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS)
         assert field.serialize("d2", user) == 86401000001
 
         field = fields.TimeDelta(fields.TimeDelta.DAYS)
-        assert field.serialize("d3", user) == 1
+        assert field.serialize("d3", user) == 1.0000115740856481
         field = fields.TimeDelta(fields.TimeDelta.SECONDS)
-        assert field.serialize("d3", user) == 86401
+        assert field.serialize("d3", user) == 86401.000001
         field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS)
         assert field.serialize("d3", user) == 86401000001
 
@@ -688,44 +702,85 @@ class TestFieldSerialization:
         assert field.serialize("d5", user) == -86400000000
 
         field = fields.TimeDelta(fields.TimeDelta.WEEKS)
-        assert field.serialize("d6", user) == 1
+        assert field.serialize("d6", user) == 1.1489103852529763
         field = fields.TimeDelta(fields.TimeDelta.DAYS)
-        assert field.serialize("d6", user) == 7 + 1
+        assert field.serialize("d6", user) == 8.042372696770833
         field = fields.TimeDelta(fields.TimeDelta.HOURS)
-        assert field.serialize("d6", user) == 7 * 24 + 24 + 1
+        assert field.serialize("d6", user) == 193.0169447225
         field = fields.TimeDelta(fields.TimeDelta.MINUTES)
-        assert field.serialize("d6", user) == 7 * 24 * 60 + 24 * 60 + 60 + 1
-        d6_seconds = (
-            7 * 24 * 60 * 60
-            + 24 * 60 * 60  # 1 week
-            + 60 * 60  # 1 day
-            + 60  # 1 hour
-            + 1  # 1 minute
-        )
+        assert field.serialize("d6", user) == 11581.01668335
         field = fields.TimeDelta(fields.TimeDelta.SECONDS)
-        assert field.serialize("d6", user) == d6_seconds
+        assert field.serialize("d6", user) == 694861.001001
         field = fields.TimeDelta(fields.TimeDelta.MILLISECONDS)
-        assert field.serialize("d6", user) == d6_seconds * 1000 + 1
+        assert field.serialize("d6", user) == 694861001.001
         field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS)
-        assert field.serialize("d6", user) == d6_seconds * 10**6 + 1000 + 1
+        assert field.serialize("d6", user) == 694861001001
 
         user.d7 = None
         assert field.serialize("d7", user) is None
 
-        # https://github.com/marshmallow-code/marshmallow/issues/1856
         user.d8 = dt.timedelta(milliseconds=345)
         field = fields.TimeDelta(fields.TimeDelta.MILLISECONDS)
         assert field.serialize("d8", user) == 345
 
         user.d9 = dt.timedelta(milliseconds=1999)
         field = fields.TimeDelta(fields.TimeDelta.SECONDS)
-        assert field.serialize("d9", user) == 1
+        assert field.serialize("d9", user) == 1.999
+
+        user.d10 = dt.timedelta(
+            weeks=1,
+            days=6,
+            hours=2,
+            minutes=5,
+            seconds=51,
+            milliseconds=10,
+            microseconds=742,
+        )
+
+        field = fields.TimeDelta(fields.TimeDelta.MICROSECONDS)
+        unit_value = dt.timedelta(microseconds=1).total_seconds()
+        assert math.isclose(
+            field.serialize("d10", user), user.d10.total_seconds() / unit_value
+        )
+
+        field = fields.TimeDelta(fields.TimeDelta.MILLISECONDS)
+        unit_value = dt.timedelta(milliseconds=1).total_seconds()
+        assert math.isclose(
+            field.serialize("d10", user), user.d10.total_seconds() / unit_value
+        )
+
+        field = fields.TimeDelta(fields.TimeDelta.SECONDS)
+        assert math.isclose(field.serialize("d10", user), user.d10.total_seconds())
+
+        field = fields.TimeDelta(fields.TimeDelta.MINUTES)
+        unit_value = dt.timedelta(minutes=1).total_seconds()
+        assert math.isclose(
+            field.serialize("d10", user), user.d10.total_seconds() / unit_value
+        )
+
+        field = fields.TimeDelta(fields.TimeDelta.HOURS)
+        unit_value = dt.timedelta(hours=1).total_seconds()
+        assert math.isclose(
+            field.serialize("d10", user), user.d10.total_seconds() / unit_value
+        )
+
+        field = fields.TimeDelta(fields.TimeDelta.DAYS)
+        unit_value = dt.timedelta(days=1).total_seconds()
+        assert math.isclose(
+            field.serialize("d10", user), user.d10.total_seconds() / unit_value
+        )
+
+        field = fields.TimeDelta(fields.TimeDelta.WEEKS)
+        unit_value = dt.timedelta(weeks=1).total_seconds()
+        assert math.isclose(
+            field.serialize("d10", user), user.d10.total_seconds() / unit_value
+        )
 
     def test_datetime_list_field(self):
-        obj = DateTimeList([dt.datetime.utcnow(), dt.datetime.now()])
+        obj = DateTimeList([dt.datetime.now(dt.timezone.utc), dt.datetime.now()])
         field = fields.List(fields.DateTime)
         result = field.serialize("dtimes", obj)
-        assert all(type(each) == str for each in result)
+        assert all(type(each) is str for each in result)
 
     def test_list_field_serialize_none_returns_none(self):
         obj = DateTimeList(None)
@@ -734,7 +789,7 @@ class TestFieldSerialization:
 
     def test_list_field_work_with_generator_single_value(self):
         def custom_generator():
-            yield dt.datetime.utcnow()
+            yield dt.datetime.now(dt.timezone.utc)
 
         obj = DateTimeList(custom_generator())
         field = fields.List(fields.DateTime)
@@ -743,7 +798,7 @@ class TestFieldSerialization:
 
     def test_list_field_work_with_generators_multiple_values(self):
         def custom_generator():
-            yield from [dt.datetime.utcnow(), dt.datetime.now()]
+            yield from [dt.datetime.now(dt.timezone.utc), dt.datetime.now()]
 
         obj = DateTimeList(custom_generator())
         field = fields.List(fields.DateTime)
@@ -796,20 +851,20 @@ class TestFieldSerialization:
             id = fields.Int()
 
         with pytest.raises(ValueError):
-            fields.List("string")
+            fields.List("string")  # type: ignore[arg-type]
         expected_msg = (
             "The list elements must be a subclass or instance of "
-            "marshmallow.base.FieldABC"
+            "marshmallow.fields.Field"
         )
         with pytest.raises(ValueError, match=expected_msg):
-            fields.List(ASchema)
+            fields.List(ASchema)  # type: ignore[arg-type]
 
     def test_datetime_integer_tuple_field(self):
-        obj = DateTimeIntegerTuple((dt.datetime.utcnow(), 42))
+        obj = DateTimeIntegerTuple((dt.datetime.now(dt.timezone.utc), 42))
         field = fields.Tuple([fields.DateTime, fields.Integer])
         result = field.serialize("dtime_int", obj)
-        assert type(result[0]) == str
-        assert type(result[1]) == int
+        assert type(result[0]) is str
+        assert type(result[1]) is int
 
     def test_tuple_field_serialize_none_returns_none(self):
         obj = DateTimeIntegerTuple(None)
@@ -821,18 +876,18 @@ class TestFieldSerialization:
             id = fields.Int()
 
         with pytest.raises(ValueError):
-            fields.Tuple(["string"])
+            fields.Tuple(["string"])  # type: ignore[arg-type]
         with pytest.raises(ValueError):
-            fields.Tuple(fields.String)
+            fields.Tuple(fields.String)  # type: ignore[arg-type]
         expected_msg = (
             'Elements of "tuple_fields" must be subclasses or '
-            "instances of marshmallow.base.FieldABC."
+            "instances of marshmallow.fields.Field."
         )
         with pytest.raises(ValueError, match=expected_msg):
-            fields.Tuple([ASchema])
+            fields.Tuple([ASchema])  # type: ignore[arg-type]
 
     def test_serialize_does_not_apply_validators(self, user):
-        field = fields.Field(validate=lambda x: False)
+        field = fields.Raw(validate=lambda x: False)
         # No validation error raised
         assert field.serialize("age", user) == user.age
 
@@ -886,21 +941,11 @@ class TestSchemaSerialization:
 
 def test_serializing_named_tuple():
     Point = namedtuple("Point", ["x", "y"])
-
-    field = fields.Field()
-
-    p = Point(x=4, y=2)
-
-    assert field.serialize("x", p) == 4
-
-
-def test_serializing_named_tuple_with_meta():
-    Point = namedtuple("Point", ["x", "y"])
     p = Point(x=4, y=2)
 
     class PointSerializer(Schema):
-        class Meta:
-            fields = ("x", "y")
+        x = fields.Int()
+        y = fields.Int()
 
     serialized = PointSerializer().dump(p)
     assert serialized["x"] == 4

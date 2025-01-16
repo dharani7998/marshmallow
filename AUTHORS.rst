@@ -168,4 +168,12 @@ Contributors (chronological)
 - Ben Windsor `@bwindsor <https://github.com/bwindsor>`_
 - Kevin Kirsche `@kkirsche <https://github.com/kkirsche>`_
 - Isira Seneviratne `@Isira-Seneviratne <https://github.com/Isira-Seneviratne>`_
+- Karthikeyan Singaravelan `@tirkarthi  <https://github.com/tirkarthi>`_
+- Marco Satti `@marcosatti  <https://github.com/marcosatti>`_
+- Ivo Reumkens `@vanHoi <https://github.com/vanHoi>`_
+- Aditya Tewary `@aditkumar72 <https://github.com/aditkumar72>`_
+- Sebastien Lovergne `@TheBigRoomXXL <https://github.com/TheBigRoomXXL>`_
+- Peter C `@somethingnew2-0 <https://github.com/somethingnew2-0>`_
+- Marcel Jackwerth `@mrcljx` <https://github.com/mrcljx>`_
+- Fares Abubaker `@Fares-Abubaker <https://github.com/Fares-Abubaker>`_
 - Dharanikumar Sekar `@dharani7998 <https://github.com/dharani7998>`_

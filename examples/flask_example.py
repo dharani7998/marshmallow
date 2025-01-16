@@ -1,29 +1,48 @@
+# /// script
+# requires-python = ">=3.9"
+# dependencies = [
+#     "flask",
+#     "flask-sqlalchemy>=3.1.1",
+#     "marshmallow",
+#     "sqlalchemy>2.0",
+# ]
+# ///
+from __future__ import annotations
+
 import datetime
 
 from flask import Flask, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import NoResultFound
-from marshmallow import Schema, fields, ValidationError, pre_load
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+from marshmallow import Schema, ValidationError, fields, pre_load
 
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////tmp/quotes.db"
-db = SQLAlchemy(app)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+db = SQLAlchemy(app, model_class=Base)
 
 ##### MODELS #####
 
 
-class Author(db.Model):  # type: ignore
-    id = db.Column(db.Integer, primary_key=True)
-    first = db.Column(db.String(80))
-    last = db.Column(db.String(80))
+class Author(db.Model):  # type: ignore[name-defined]
+    id: Mapped[int] = mapped_column(primary_key=True)
+    first: Mapped[str]
+    last: Mapped[str]
 
 
-class Quote(db.Model):  # type: ignore
-    id = db.Column(db.Integer, primary_key=True)
-    content = db.Column(db.String, nullable=False)
-    author_id = db.Column(db.Integer, db.ForeignKey("author.id"))
-    author = db.relationship("Author", backref=db.backref("quotes", lazy="dynamic"))
-    posted_at = db.Column(db.DateTime)
+class Quote(db.Model):  # type: ignore[name-defined]
+    id: Mapped[int] = mapped_column(primary_key=True)
+    content: Mapped[str] = mapped_column(nullable=False)
+    author_id: Mapped[int] = mapped_column(db.ForeignKey(Author.id))
+    author: Mapped[Author] = relationship(backref=db.backref("quotes", lazy="dynamic"))  # type: ignore[assignment]
+    posted_at: Mapped[datetime.datetime]
 
 
 ##### SCHEMAS #####
@@ -127,7 +146,9 @@ def new_quote():
         db.session.add(author)
     # Create new quote
     quote = Quote(
-        content=data["content"], author=author, posted_at=datetime.datetime.utcnow()
+        content=data["content"],
+        author=author,
+        posted_at=datetime.datetime.now(datetime.UTC),
     )
     db.session.add(quote)
     db.session.commit()
@@ -136,5 +157,6 @@ def new_quote():
 
 
 if __name__ == "__main__":
-    db.create_all()
+    with app.app_context():
+        db.create_all()
     app.run(debug=True, port=5000)

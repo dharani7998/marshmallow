@@ -1,26 +1,31 @@
-Nesting Schemas
+Nesting schemas
 ===============
 
-Schemas can be nested to represent relationships between objects (e.g. foreign key relationships). For example, a ``Blog`` may have an author represented by a User object.
+Schemas can be nested to represent relationships between objects (e.g. foreign key relationships). 
+For example, a ``Blog`` may have an author represented by a ``User``.
+And a ``User`` may have many friends, each of which is a ``User``.
 
 .. code-block:: python
 
+    from __future__ import annotations  # Enable newer type annotation syntax
+
     import datetime as dt
+    from dataclasses import dataclass, field
 
 
+    @dataclass
     class User:
-        def __init__(self, name, email):
-            self.name = name
-            self.email = email
-            self.created_at = dt.datetime.now()
-            self.friends = []
-            self.employer = None
+        name: str
+        email: str
+        created_at: dt.datetime = field(default_factory=dt.datetime.now)
+        friends: list[User] = field(default_factory=list)
+        employer: User | None = None
 
 
+    @dataclass
     class Blog:
-        def __init__(self, title, author):
-            self.title = title
-            self.author = author  # A User object
+        title: str
+        author: User
 
 Use a :class:`Nested <marshmallow.fields.Nested>` field to represent the relationship, passing in a nested schema.
 
@@ -63,7 +68,7 @@ The serialized blog will have the nested user representation.
 
 .. _specifying-nested-fields:
 
-Specifying Which Fields to Nest
+Specifying which fields to nest
 -------------------------------
 
 You can explicitly specify which attributes of the nested objects you want to (de)serialize with the ``only`` argument to the schema.
@@ -129,7 +134,7 @@ You can replace nested data with a single value (or flat list of values if ``man
 
 .. _partial-loading:
 
-Partial Loading
+Partial loading
 ---------------
 
 Nested schemas also inherit the ``partial`` parameter of the parent ``load`` call.
@@ -165,7 +170,7 @@ You can specify a subset of the fields to allow partial loading using dot delimi
 
 .. _two-way-nesting:
 
-Two-way Nesting
+Two-way nesting
 ---------------
 
 If you have two objects that nest each other, you can pass a callable to `Nested <marshmallow.fields.Nested>`.
@@ -194,7 +199,7 @@ Correspondingly, a representation of a ``Book`` will include its author represen
 
 .. code-block:: python
 
-    from marshmallow import pprint
+    from pprint import pprint
     from mymodels import Author, Book
 
     author = Author(name="William Faulkner")
@@ -258,10 +263,10 @@ This is useful for avoiding circular imports when your schemas are located in di
 
 .. _self-nesting:
 
-Nesting A Schema Within Itself
+Nesting a schema within itself
 ------------------------------
 
-If the object to be marshalled has a relationship to an object of the same type, you can nest the `Schema` within itself by passing a callable that returns an instance of the same schema.
+If the object to be marshalled has a relationship to an object of the same type, you can nest the `Schema <marshmallow.Schema>` within itself by passing a callable that returns an instance of the same schema.
 
 .. code-block:: python
 
@@ -303,9 +308,9 @@ If the object to be marshalled has a relationship to an object of the same type,
     #     }
     # }
 
-Next Steps
+Next steps
 ----------
 
-- Want to create your own field type? See the :doc:`Custom Fields <custom_fields>` page.
-- Need to add schema-level validation, post-processing, or error handling behavior? See the :doc:`Extending Schemas <extending>` page.
-- For example applications using marshmallow, check out the :doc:`Examples <examples>` page.
+- Want to create your own field type? See the :doc:`custom_fields` page.
+- Need to add schema-level validation, post-processing, or error handling behavior? See the :doc:`extending` page.
+- For more detailed usage examples, check out the :doc:`examples/index` page.

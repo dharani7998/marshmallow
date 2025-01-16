@@ -1,29 +1,24 @@
-.. module:: marshmallow
-
 Quickstart
 ==========
 
 This guide will walk you through the basics of creating schemas for serializing and deserializing data.
 
-Declaring Schemas
+Declaring schemas
 -----------------
 
 Let's start with a basic user "model".
 
 .. code-block:: python
 
+    from dataclasses import dataclass, field
     import datetime as dt
 
 
+    @dataclass
     class User:
-        def __init__(self, name, email):
-            self.name = name
-            self.email = email
-            self.created_at = dt.datetime.now()
-
-        def __repr__(self):
-            return "<User(name={self.name!r})>".format(self=self)
-
+        name: str
+        email: str
+        created_at: dt.datetime = field(default_factory=dt.datetime.now)
 
 Create a schema by defining a class with variables mapping attribute names to :class:`Field <fields.Field>` objects.
 
@@ -39,24 +34,27 @@ Create a schema by defining a class with variables mapping attribute names to :c
 
 .. seealso::
 
-    For a full reference on the available field classes, see the :ref:`API Docs <api_fields>`.
+    For a full reference on the available field classes, see the `fields module documentation <marshmallow.fields>`.
 
-Creating Schemas From Dictionaries
-----------------------------------
+.. admonition:: Creating schemas from dictionaries
 
-You can create a schema from a dictionary of fields using the `from_dict <marshmallow.Schema.from_dict>` method.
+    You can also create a schema from a dictionary of fields using the `from_dict <marshmallow.Schema.from_dict>` method.
 
-.. code-block:: python
+    .. code-block:: python
 
-    from marshmallow import Schema, fields
+        from marshmallow import Schema, fields
 
-    UserSchema = Schema.from_dict(
-        {"name": fields.Str(), "email": fields.Email(), "created_at": fields.DateTime()}
-    )
+        UserSchema = Schema.from_dict(
+            {
+                "name": fields.Str(),
+                "email": fields.Email(),
+                "created_at": fields.DateTime(),
+            }
+        )
 
-`from_dict <marshmallow.Schema.from_dict>` is especially useful for generating schemas at runtime.
+    `from_dict <marshmallow.Schema.from_dict>` is especially useful for generating schemas at runtime.
 
-Serializing Objects ("Dumping")
+Serializing objects ("dumping")
 -------------------------------
 
 Serialize objects by passing them to your schema's :meth:`dump <marshmallow.Schema.dump>` method, which returns the formatted result.
@@ -78,10 +76,10 @@ You can also serialize to a JSON-encoded string using :meth:`dumps <marshmallow.
 .. code-block:: python
 
     json_result = schema.dumps(user)
-    pprint(json_result)
+    print(json_result)
     # '{"name": "Monty", "email": "monty@python.org", "created_at": "2014-08-17T14:54:16.049594+00:00"}'
 
-Filtering Output
+Filtering output
 ----------------
 
 You may not need to output all declared fields every time you use a schema. You can specify which fields to output with the ``only`` parameter.
@@ -95,13 +93,13 @@ You may not need to output all declared fields every time you use a schema. You 
 You can also exclude fields by passing in the ``exclude`` parameter.
 
 
-Deserializing Objects ("Loading")
+Deserializing objects ("loading")
 ---------------------------------
 
-The reverse of the `dump <Schema.dump>` method is `load <Schema.load>`, which validates and deserializes 
-an input dictionary to an application-level data structure. 
+The reverse of the `dump <Schema.dump>` method is `load <Schema.load>`, which validates and deserializes
+an input dictionary to an application-level data structure.
 
-By default, :meth:`load <Schema.load>` will return a dictionary of field names mapped to deserialized values (or raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` 
+By default, :meth:`load <Schema.load>` will return a dictionary of field names mapped to deserialized values (or raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>`
 with a dictionary of validation errors, which we'll :ref:`revisit later <validation>`).
 
 .. code-block:: python
@@ -122,7 +120,7 @@ with a dictionary of validation errors, which we'll :ref:`revisit later <validat
 
 Notice that the datetime string was converted to a `datetime` object.
 
-Deserializing to Objects
+Deserializing to objects
 ++++++++++++++++++++++++
 
 In order to deserialize to an object, define a method of your :class:`Schema` and decorate it with `post_load <marshmallow.decorators.post_load>`. The method receives a dictionary of deserialized data.
@@ -150,7 +148,7 @@ Now, the `load <Schema.load>` method return a ``User`` instance.
     result = schema.load(user_data)
     print(result)  # => <User(name='Ronnie')>
 
-Handling Collections of Objects
+Handling collections of objects
 -------------------------------
 
 Set ``many=True`` when dealing with iterable collections of objects.
@@ -176,7 +174,7 @@ Set ``many=True`` when dealing with iterable collections of objects.
 Validation
 ----------
 
-:meth:`Schema.load` (and its JSON-decoding counterpart, :meth:`Schema.loads`) raises a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` error when invalid data are passed in. You can access the dictionary of validation errors from the `ValidationError.messages <marshmallow.exceptions.ValidationError.messages>` attribute. The data that were correctly deserialized are accessible in `ValidationError.valid_data <marshmallow.exceptions.ValidationError.valid_data>`. Some fields, such as the :class:`Email <fields.Email>` and :class:`URL <fields.URL>` fields, have built-in validation.
+`Schema.load <marshmallow.Schema.load>` (and its JSON-decoding counterpart, `Schema.loads <marshmallow.Schema.loads>`) raises a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` error when invalid data are passed in. You can access the dictionary of validation errors from the `ValidationError.messages <marshmallow.exceptions.ValidationError.messages>` attribute. The data that were correctly deserialized are accessible in `ValidationError.valid_data <marshmallow.exceptions.ValidationError.valid_data>`. Some fields, such as the :class:`Email <fields.Email>` and :class:`URL <fields.URL>` fields, have built-in validation.
 
 .. code-block:: python
 
@@ -246,7 +244,7 @@ There are a number of built-in validators in the :ref:`marshmallow.validate <api
 You may implement your own validators.
 A validator is a callable that accepts a single argument, the value to validate.
 If validation fails, the callable should raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>`
-with a useful error message or return ``False`` (for a generic error message).
+with an error message.
 
 .. code-block:: python
 
@@ -274,22 +272,22 @@ You may also pass a collection (list, tuple, generator) of callables to ``valida
 
 .. warning::
 
-    Validation occurs on deserialization but not on serialization. 
-    To improve serialization performance, data passed to :meth:`Schema.dump` 
+    Validation occurs on deserialization but not on serialization.
+    To improve serialization performance, data passed to `Schema.dump <marshmallow.Schema.dump>`
     are considered valid.
 
 .. seealso::
 
-    You can register a custom error handler function for a schema by overriding the 
-    :func:`handle_error <Schema.handle_error>` method. 
-    See the :doc:`Extending Schemas <extending>` page for more info.
+    You can register a custom error handler function for a schema by overriding the
+    :func:`handle_error <Schema.handle_error>` method.
+    See the :doc:`extending` page for more info.
 
 .. seealso::
 
-    Need schema-level validation? See the :ref:`Extending Schemas <schemavalidation>` page.
+    If you need to validate multiple fields within a single validator, see :ref:`schema_validation`.
 
 
-Field Validators as Methods
+Field validators as methods
 +++++++++++++++++++++++++++
 
 It is sometimes convenient to write validators as methods. Use the `validates <marshmallow.decorators.validates>` decorator to register field validator methods.
@@ -310,10 +308,10 @@ It is sometimes convenient to write validators as methods. Use the `validates <m
                 raise ValidationError("Quantity must not be greater than 30.")
 
 
-Required Fields
+Required fields
 ---------------
 
-Make a field required by passing ``required=True``. An error will be raised if the the value is missing from the input to :meth:`Schema.load`.
+Make a field required by passing ``required=True``. An error will be raised if the the value is missing from the input to `Schema.load <marshmallow.Schema.load>`.
 
 To customize the error message for required fields, pass a `dict` with a ``required`` key as the ``error_messages`` argument for the field.
 
@@ -343,7 +341,7 @@ To customize the error message for required fields, pass a `dict` with a ``requi
         # 'name': ['Missing data for required field.']}
 
 
-Partial Loading
+Partial loading
 ---------------
 
 When using the same schema in multiple places, you may only want to skip ``required``
@@ -373,7 +371,7 @@ You can ignore missing fields entirely by setting ``partial=True``.
     # OR UserSchema(partial=True).load({'age': 42})
     print(result)  # => {'age': 42}
 
-Specifying Defaults
+Specifying defaults
 -------------------
 
 `load_default` specifies the default deserialization value for a field.
@@ -393,28 +391,69 @@ Likewise, `dump_default` specifies the default serialization value.
 
 .. _unknown:
 
-Handling Unknown Fields
+Handling unknown fields
 -----------------------
 
 By default, :meth:`load <Schema.load>` will raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>` if it encounters a key with no matching ``Field`` in the schema.
 
-This behavior can be modified with the ``unknown`` option, which accepts one of the following:
-
-- `RAISE <marshmallow.utils.RAISE>` (default): raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>`
-  if there are any unknown fields
-- `EXCLUDE <marshmallow.utils.EXCLUDE>`: exclude unknown fields
-- `INCLUDE <marshmallow.utils.INCLUDE>`: accept and include the unknown fields
-
-You can specify ``unknown`` in the *class Meta* of your `Schema`,
-
 .. code-block:: python
 
-    from marshmallow import Schema, INCLUDE
+    from marshmallow import Schema, fields
 
 
     class UserSchema(Schema):
+        name = fields.Str()
+        email = fields.Email()
+        created_at = fields.DateTime()
+
+
+    UserSchema().load(
+        {
+            "name": "Monty",
+            "email": "monty@python.org",
+            "created_at": "2014-08-17T14:54:16.049594+00:00",
+            "extra": "Not a field",
+        }
+    )
+    # raises marshmallow.exceptions.ValidationError: {'extra': ['Unknown field.']}
+
+This behavior can be modified with the ``unknown`` option, which accepts one of the following:
+
+- `RAISE <marshmallow.RAISE>` (default): raise a :exc:`ValidationError <marshmallow.exceptions.ValidationError>`
+  if there are any unknown fields
+- `EXCLUDE <marshmallow.EXCLUDE>`: exclude unknown fields
+- `INCLUDE <marshmallow.INCLUDE>`: accept and include the unknown fields
+
+You can specify `unknown <marshmallow.Schema.Meta.unknown>` in the `class Meta <marshmallow.Schema.Meta>` of your `Schema <marshmallow.Schema>`,
+
+.. code-block:: python
+
+    from pprint import pprint
+    from marshmallow import Schema, fields, INCLUDE
+
+
+    class UserSchema(Schema):
+        name = fields.Str()
+        email = fields.Email()
+        created_at = fields.DateTime()
+
         class Meta:
             unknown = INCLUDE
+
+
+    result = UserSchema().load(
+        {
+            "name": "Monty",
+            "email": "monty@python.org",
+            "created_at": "2014-08-17T14:54:16.049594+00:00",
+            "extra": "Not a field",
+        }
+    )
+    pprint(result)
+    # {'created_at': datetime.datetime(2014, 8, 17, 14, 54, 16, 49594, tzinfo=datetime.timezone(datetime.timedelta(0), '+0000')),
+    #  'email': 'monty@python.org',
+    #  'extra': 'Not a field',
+    #  'name': 'Monty'}
 
 at instantiation time,
 
@@ -422,21 +461,23 @@ at instantiation time,
 
     schema = UserSchema(unknown=INCLUDE)
 
-or when calling `load <Schema.load>`.
+or when calling :meth:`load <marshmallow.Schema.load>`.
 
 .. code-block:: python
 
     UserSchema().load(data, unknown=INCLUDE)
 
-The ``unknown`` option value set in :meth:`load <Schema.load>` will override the value applied at instantiation time, which itself will override the value defined in the *class Meta*.
+The `unknown <marshmallow.Schema.Meta.unknown>` option value set in `load <marshmallow.Schema.load>`
+will override the value applied at instantiation time,
+which itself will override the value defined in the `class Meta <marshmallow.Schema.Meta>`.
 
 This order of precedence allows you to change the behavior of a schema for different contexts.
 
 
-Validation Without Deserialization
+Validation without deserialization
 ----------------------------------
 
-If you only need to validate input data (without deserializing to an object), you can use :meth:`Schema.validate`.
+If you only need to validate input data (without deserializing to an object), you can use `Schema.validate <marshmallow.Schema.validate>`.
 
 .. code-block:: python
 
@@ -444,7 +485,7 @@ If you only need to validate input data (without deserializing to an object), yo
     print(errors)  # {'email': ['Not a valid email address.']}
 
 
-"Read-only" and "Write-only" Fields
+"Read-only" and "write-only" fields
 -----------------------------------
 
 In the context of a web API, the ``dump_only`` and ``load_only`` parameters are conceptually equivalent to "read-only" and "write-only" fields, respectively.
@@ -462,7 +503,7 @@ In the context of a web API, the ``dump_only`` and ``load_only`` parameters are 
 
     When loading, dump-only fields are considered unknown. If the ``unknown`` option is set to ``INCLUDE``, values with keys corresponding to those fields are therefore loaded with no validation.
 
-Specifying Serialization/Deserialization Keys
+Specifying serialization/deserialization keys
 ---------------------------------------------
 
 Schemas will (de)serialize an input dictionary from/to an output dictionary whose keys are identical to the field names.
@@ -488,77 +529,9 @@ If you are consuming and producing data that does not match your schema, you can
     # 'email': 'foo@bar.com'}
 
 
-.. _meta_options:
-
-Implicit Field Creation
------------------------
-
-When your model has many attributes, specifying the field type for every attribute can get repetitive, especially when many of the attributes are already native Python datatypes.
-
-The ``fields`` option allows you to specify implicitly-created fields. Marshmallow will choose an appropriate field type based on the attribute's type.
-
-Let's refactor our User schema to be more concise.
-
-.. code-block:: python
-
-    class UserSchema(Schema):
-        uppername = fields.Function(lambda obj: obj.name.upper())
-
-        class Meta:
-            fields = ("name", "email", "created_at", "uppername")
-
-Note that ``name`` will be automatically formatted as a :class:`String <marshmallow.fields.String>` and ``created_at`` will be formatted as a :class:`DateTime <marshmallow.fields.DateTime>`.
-
-.. note::
-
-    If instead you want to specify which field names to include *in addition* to the explicitly declared fields, you can use the ``additional`` option.
-
-    The schema below is equivalent to above:
-
-    .. code-block:: python
-
-        class UserSchema(Schema):
-            uppername = fields.Function(lambda obj: obj.name.upper())
-
-            class Meta:
-                # No need to include 'uppername'
-                additional = ("name", "email", "created_at")
-
-Ordering Output
----------------
-
-To maintain field ordering, set the ``ordered`` option to `True`. This will instruct marshmallow to serialize data to a `collections.OrderedDict`.
-
-.. code-block:: python
-
-    from collections import OrderedDict
-    from pprint import pprint
-
-    from marshmallow import Schema, fields
-
-
-    class UserSchema(Schema):
-        first_name = fields.String()
-        last_name = fields.String()
-        email = fields.Email()
-
-        class Meta:
-            ordered = True
-
-
-    u = User("Charlie", "Stones", "charlie@stones.com")
-    schema = UserSchema()
-    result = schema.dump(u)
-    assert isinstance(result, OrderedDict)
-    pprint(result, indent=2)
-    #  OrderedDict([('first_name', 'Charlie'),
-    #              ('last_name', 'Stones'),
-    #              ('email', 'charlie@stones.com')])
-
-Next Steps
+Next steps
 ----------
-
-- Need to represent relationships between objects? See the :doc:`Nesting Schemas <nesting>` page.
-- Want to create your own field type? See the :doc:`Custom Fields <custom_fields>` page.
-- Need to add schema-level validation, post-processing, or error handling behavior? See the :doc:`Extending Schemas <extending>` page.
-- For example applications using marshmallow, check out the :doc:`Examples <examples>` page.
+- Need to represent relationships between objects? See the :doc:`nesting` page.
+- Want to create your own field type? See the :doc:`custom_fields` page.
+- Need to add schema-level validation, post-processing, or error handling behavior? See the :doc:`extending` page.
+- For more detailed usage examples, check out the :doc:`examples/index` page.

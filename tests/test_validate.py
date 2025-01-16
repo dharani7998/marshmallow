@@ -1,9 +1,10 @@
 """Tests for marshmallow.validate"""
 
 import re
+
 import pytest
 
-from marshmallow import validate, ValidationError
+from marshmallow import ValidationError, validate
 
 
 @pytest.mark.parametrize(
@@ -28,6 +29,9 @@ from marshmallow import validate, ValidationError
         "http://www.example.com:8000/foo",
         "http://user@example.com",
         "http://user:pass@example.com",
+        "http://:pass@example.com",
+        "http://@example.com",
+        "http://AZaz09-._~%2A!$&'()*+,;=:@example.com",
     ],
 )
 def test_url_absolute_valid(valid_url):
@@ -57,6 +61,12 @@ def test_url_absolute_valid(valid_url):
         " ",
         "",
         None,
+        "http://user@pass@example.com",
+        "http://@pass@example.com",
+        "http://@@example.com",
+        "http://^@example.com",
+        "http://%0G@example.com",
+        "http://%@example.com",
     ],
 )
 def test_url_absolute_invalid(invalid_url):
@@ -75,6 +85,9 @@ def test_url_absolute_invalid(invalid_url):
         "http://example.com/./icons/logo.gif",
         "ftp://example.com/../../../../g",
         "http://example.com/g?y/./x",
+        "/foo/bar",
+        "/foo?bar",
+        "/foo?bar#baz",
     ],
 )
 def test_url_relative_valid(valid_url):
@@ -100,6 +113,48 @@ def test_url_relative_valid(valid_url):
 )
 def test_url_relative_invalid(invalid_url):
     validator = validate.URL(relative=True)
+    with pytest.raises(ValidationError):
+        validator(invalid_url)
+
+
+@pytest.mark.parametrize(
+    "valid_url",
+    [
+        "/foo/bar",
+        "/foo?bar",
+        "?bar",
+        "/foo?bar#baz",
+    ],
+)
+def test_url_relative_only_valid(valid_url):
+    validator = validate.URL(relative=True, absolute=False)
+    assert validator(valid_url) == valid_url
+
+
+@pytest.mark.parametrize(
+    "invalid_url",
+    [
+        "http//example.org",
+        "http://example.org\n",
+        "suppliers.html",
+        "../icons/logo.gif",
+        "icons/logo.gif",
+        "../.../g",
+        "...",
+        "\\",
+        " ",
+        "",
+        "http://example.org",
+        "http://123.45.67.8/",
+        "http://example.com/foo/bar/../baz",
+        "https://example.com/../icons/logo.gif",
+        "http://example.com/./icons/logo.gif",
+        "ftp://example.com/../../../../g",
+        "http://example.com/g?y/./x",
+    ],
+)
+def test_url_relative_only_invalid(invalid_url):
+    validator = validate.URL(relative=True, absolute=False)
     with pytest.raises(ValidationError):
         validator(invalid_url)
 
@@ -170,10 +225,21 @@ def test_url_custom_message():
 def test_url_repr():
     assert repr(
         validate.URL(relative=False, error=None)
-    ) == "<URL(relative=False, error={!r})>".format("Not a valid URL.")
+    ) == "<URL(relative=False, absolute=True, error={!r})>".format("Not a valid URL.")
     assert repr(
         validate.URL(relative=True, error="foo")
-    ) == "<URL(relative=True, error={!r})>".format("foo")
+    ) == "<URL(relative=True, absolute=True, error={!r})>".format("foo")
+    assert repr(
+        validate.URL(relative=True, absolute=False, error="foo")
+    ) == "<URL(relative=True, absolute=False, error={!r})>".format("foo")
+
+
+def test_url_rejects_invalid_relative_usage():
+    with pytest.raises(
+        ValueError,
+        match="URL validation cannot set both relative and absolute to False",
+    ):
+        validate.URL(relative=False, absolute=False)
 
 
 @pytest.mark.parametrize(
@@ -293,12 +359,15 @@ def test_range_repr():
         )
         == "<Range(min=None, max=None, min_inclusive=True, max_inclusive=True, error=None)>"  # noqa: B950
     )
-    assert repr(
-        validate.Range(
-            min=1, max=3, error="foo", min_inclusive=False, max_inclusive=False
+    assert (
+        repr(
+            validate.Range(
+                min=1, max=3, error="foo", min_inclusive=False, max_inclusive=False
+            )
         )
-    ) == "<Range(min=1, max=3, min_inclusive=False, max_inclusive=False, error={!r})>".format(  # noqa: B950
-        "foo"
+        == "<Range(min=1, max=3, min_inclusive=False, max_inclusive=False, error={!r})>".format(  # noqa: B950
+            "foo"
+        )
     )
 
 
