@@ -34,21 +34,27 @@ import contextlib
 import contextvars
 import typing
 
-_ContextType = typing.TypeVar("_ContextType")
+try:
+    from types import EllipsisType
+except ImportError:  # Python<3.10
+    EllipsisType = type(Ellipsis)  # type: ignore[misc]
+
+_ContextT = typing.TypeVar("_ContextT")
+_DefaultT = typing.TypeVar("_DefaultT")
 _CURRENT_CONTEXT: contextvars.ContextVar = contextvars.ContextVar("context")
 
 
-class Context(contextlib.AbstractContextManager, typing.Generic[_ContextType]):
+class Context(contextlib.AbstractContextManager, typing.Generic[_ContextT]):
     """Context manager for setting and retrieving context.
 
     :param context: The context to use within the context manager scope.
     """
 
-    def __init__(self, context: _ContextType) -> None:
+    def __init__(self, context: _ContextT) -> None:
         self.context = context
         self.token: contextvars.Token | None = None
 
-    def __enter__(self) -> Context[_ContextType]:
+    def __enter__(self) -> Context[_ContextT]:
         self.token = _CURRENT_CONTEXT.set(self.context)
         return self
 
@@ -56,7 +62,7 @@ class Context(contextlib.AbstractContextManager, typing.Generic[_ContextType]):
         _CURRENT_CONTEXT.reset(typing.cast(contextvars.Token, self.token))
 
     @classmethod
-    def get(cls, default=...) -> _ContextType:
+    def get(cls, default: _DefaultT | EllipsisType = ...) -> _ContextT | _DefaultT:
         """Get the current context.
 
         :param default: Default value to return if no context is set.
