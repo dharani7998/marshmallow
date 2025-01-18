@@ -369,6 +369,9 @@ class Range(Validator):
         return value
 
 
+_SizedT = typing.TypeVar("_SizedT", bound=typing.Sized)
+
+
 class Length(Validator):
     """Validator which succeeds if the value passed to it has a
     length between a minimum and maximum. Uses len(), so it
@@ -411,12 +414,12 @@ class Length(Validator):
     def _repr_args(self) -> str:
         return f"min={self.min!r}, max={self.max!r}, equal={self.equal!r}"
 
-    def _format_error(self, value: typing.Sized, message: str) -> str:
+    def _format_error(self, value: _SizedT, message: str) -> str:
         return (self.error or message).format(
             input=value, min=self.min, max=self.max, equal=self.equal
         )
 
-    def __call__(self, value: typing.Sized) -> typing.Sized:
+    def __call__(self, value: _SizedT) -> _SizedT:
         length = len(value)
 
         if self.equal is not None:
@@ -535,7 +538,7 @@ class Predicate(Validator):
     def _format_error(self, value: typing.Any) -> str:
         return self.error.format(input=value, method=self.method)
 
-    def __call__(self, value: typing.Any) -> typing.Any:
+    def __call__(self, value: _T) -> _T:
         method = getattr(value, self.method)
 
         if not method(**self.kwargs):
