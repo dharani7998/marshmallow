@@ -1,5 +1,6 @@
 """Utility methods for marshmallow."""
 
+# ruff: noqa: T201, T203
 from __future__ import annotations
 
 import datetime as dt
@@ -100,17 +101,15 @@ def get_value(obj, key: int | str, default=missing):
     """
     if not isinstance(key, int) and "." in key:
         return _get_value_for_keys(obj, key.split("."), default)
-    else:
-        return _get_value_for_key(obj, key, default)
+    return _get_value_for_key(obj, key, default)
 
 
 def _get_value_for_keys(obj, keys, default):
     if len(keys) == 1:
         return _get_value_for_key(obj, keys[0], default)
-    else:
-        return _get_value_for_keys(
-            _get_value_for_key(obj, keys[0], default), keys[1:], default
-        )
+    return _get_value_for_keys(
+        _get_value_for_key(obj, keys[0], default), keys[1:], default
+    )
 
 
 def _get_value_for_key(obj, key, default):
@@ -139,7 +138,7 @@ def set_value(dct: dict[str, typing.Any], key: str, value: typing.Any):
         target = dct.setdefault(head, {})
         if not isinstance(target, dict):
             raise ValueError(
-                f"Cannot set {key} in {head} " f"due to existing value: {target}"
+                f"Cannot set {key} in {head} due to existing value: {target}"
             )
         set_value(target, rest, value)
     else:

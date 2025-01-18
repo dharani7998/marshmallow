@@ -96,6 +96,7 @@ def validates(*field_names: str) -> Callable[..., Any]:
 
 def validates_schema(
     fn: Callable[..., Any] | None = None,
+    *,
     pass_collection: bool = False,
     pass_original: bool = False,
     skip_on_field_errors: bool = True,
@@ -112,13 +113,13 @@ def validates_schema(
     If ``skip_on_field_errors=True``, this validation method will be skipped whenever
     validation errors have been detected when validating fields.
 
-    .. versionchanged:: 3.0.0b1
-        ``skip_on_field_errors`` defaults to `True`.
-    .. versionchanged:: 3.0.0
-        ``partial`` and ``many`` are always passed as keyword arguments to
+    .. versionchanged:: 3.0.0b1 ``skip_on_field_errors`` defaults to `True`.
+    .. versionchanged:: 3.0.0 ``partial`` and ``many`` are always passed as keyword arguments to
         the decorated method.
-    .. versionchanged:: 4.0.0
-        ``unknown`` is passed as a keyword argument to the decorated method.
+    .. versionchanged:: 4.0.0 ``unknown`` is passed as a keyword argument to the decorated method.
+    .. versionchanged:: 4.0.0 ``pass_many`` is renamed to ``pass_collection``.
+    .. versionchanged:: 4.0.0 ``pass_collection``, ``pass_original``, and ``skip_on_field_errors``
+        are keyword-only arguments.
     """
     return set_hook(
         fn,
@@ -130,7 +131,9 @@ def validates_schema(
 
 
 def pre_dump(
-    fn: Callable[..., Any] | None = None, pass_collection: bool = False
+    fn: Callable[..., Any] | None = None,
+    *,
+    pass_collection: bool = False,
 ) -> Callable[..., Any]:
     """Register a method to invoke before serializing an object. The method
     receives the object to be serialized and returns the processed object.
@@ -139,14 +142,16 @@ def pre_dump(
     argument passed to the `Schema <marshmallow.Schema>`'s :func:`~marshmallow.Schema.dump` call.
     If ``pass_collection=True``, the raw data (which may be a collection) is passed.
 
-    .. versionchanged:: 3.0.0
-        ``many`` is always passed as a keyword arguments to the decorated method.
+    .. versionchanged:: 3.0.0 ``many`` is always passed as a keyword arguments to the decorated method.
+    .. versionchanged:: 4.0.0 ``pass_many`` is renamed to ``pass_collection``.
+    .. versionchanged:: 4.0.0 ``pass_collection`` is a keyword-only argument.
     """
     return set_hook(fn, PRE_DUMP, many=pass_collection)
 
 
 def post_dump(
     fn: Callable[..., Any] | None = None,
+    *,
     pass_collection: bool = False,
     pass_original: bool = False,
 ) -> Callable[..., Any]:
@@ -160,14 +165,17 @@ def post_dump(
     If ``pass_original=True``, the original data (before serializing) will be passed as
     an additional argument to the method.
 
-    .. versionchanged:: 3.0.0
-        ``many`` is always passed as a keyword arguments to the decorated method.
+    .. versionchanged:: 3.0.0 ``many`` is always passed as a keyword arguments to the decorated method.
+    .. versionchanged:: 4.0.0 ``pass_many`` is renamed to ``pass_collection``.
+    .. versionchanged:: 4.0.0 ``pass_collection`` and ``pass_original`` are keyword-only arguments.
     """
     return set_hook(fn, POST_DUMP, many=pass_collection, pass_original=pass_original)
 
 
 def pre_load(
-    fn: Callable[..., Any] | None = None, pass_collection: bool = False
+    fn: Callable[..., Any] | None = None,
+    *,
+    pass_collection: bool = False,
 ) -> Callable[..., Any]:
     """Register a method to invoke before deserializing an object. The method
     receives the data to be deserialized and returns the processed data.
@@ -176,17 +184,18 @@ def pre_load(
     argument passed to the `Schema <marshmallow.Schema>`'s :func:`~marshmallow.Schema.load` call.
     If ``pass_collection=True``, the raw data (which may be a collection) is passed.
 
-    .. versionchanged:: 3.0.0
-        ``partial`` and ``many`` are always passed as keyword arguments to
+    .. versionchanged:: 3.0.0 ``partial`` and ``many`` are always passed as keyword arguments to
         the decorated method.
-    .. versionchanged:: 4.0.0
-        ``unknown`` is passed as a keyword argument to the decorated method.
+    .. versionchanged:: 4.0.0 ``pass_many`` is renamed to ``pass_collection``.
+    .. versionchanged:: 4.0.0 ``pass_collection`` is a keyword-only argument.
+    .. versionchanged:: 4.0.0 ``unknown`` is passed as a keyword argument to the decorated method.
     """
     return set_hook(fn, PRE_LOAD, many=pass_collection)
 
 
 def post_load(
     fn: Callable[..., Any] | None = None,
+    *,
     pass_collection: bool = False,
     pass_original: bool = False,
 ) -> Callable[..., Any]:
@@ -200,17 +209,21 @@ def post_load(
     If ``pass_original=True``, the original data (before deserializing) will be passed as
     an additional argument to the method.
 
-    .. versionchanged:: 3.0.0
-        ``partial`` and ``many`` are always passed as keyword arguments to
+    .. versionchanged:: 3.0.0 ``partial`` and ``many`` are always passed as keyword arguments to
         the decorated method.
-    .. versionchanged:: 4.0.0
-        ``unknown`` is passed as a keyword argument to the decorated method.
+    .. versionchanged:: 4.0.0 ``pass_many`` is renamed to ``pass_collection``.
+    .. versionchanged:: 4.0.0 ``pass_collection`` and ``pass_original`` are keyword-only arguments.
+    .. versionchanged:: 4.0.0 ``unknown`` is passed as a keyword argument to the decorated method.
     """
     return set_hook(fn, POST_LOAD, many=pass_collection, pass_original=pass_original)
 
 
 def set_hook(
-    fn: Callable[..., Any] | None, tag: str, many: bool = False, **kwargs: Any
+    fn: Callable[..., Any] | None,
+    tag: str,
+    *,
+    many: bool = False,
+    **kwargs: Any,
 ) -> Callable[..., Any]:
     """Mark decorated function as a hook to be picked up later.
     You should not need to use this method directly.
