@@ -301,7 +301,7 @@ It is sometimes convenient to write validators as methods. Use the `validates <m
         quantity = fields.Integer()
 
         @validates("quantity")
-        def validate_quantity(self, value):
+        def validate_quantity(self, value: int, data_key: str) -> None:
             if value < 0:
                 raise ValidationError("Quantity must be greater than 0.")
             if value > 30:
@@ -321,10 +321,10 @@ It is sometimes convenient to write validators as methods. Use the `validates <m
             nickname = fields.Str(required=True)
 
             @validates("name", "nickname")
-            def validate_names(self, value: str) -> str:
+            def validate_names(self, value: str, data_key: str) -> None:
                 if len(value) < 3:
                     raise ValidationError("Too short")
-                return value
+
 
 Required fields
 ---------------

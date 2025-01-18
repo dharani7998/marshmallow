@@ -137,6 +137,44 @@ To automatically generate schema fields from model classes, consider using a sep
         name = auto_field()
         birthdate = auto_field()
 
+`@validates <marshmallow.validates>` accepts multiple field names
+*****************************************************************
+
+The `@validates <marshmallow.validates>` decorator now accepts multiple field names as arguments.
+Decorated methods receive ``data_key`` as a keyword argument.
+
+.. code-block:: python
+
+    from marshmallow import fields, Schema, validates
+
+
+    # 3.x
+    class UserSchema(Schema):
+        name = fields.Str(required=True)
+        nickname = fields.Str(required=True)
+
+        @validates("name")
+        def validate_name(self, value: str) -> None:
+            if len(value) < 3:
+                raise ValidationError('"name" too short')
+
+        @validates("nickname")
+        def validate_nickname(self, value: str) -> None:
+            if len(value) < 3:
+                raise ValidationError('"nickname" too short')
+
+
+    # 4.x
+    class UserSchema(Schema):
+        name = fields.Str(required=True)
+        nickname = fields.Str(required=True)
+
+        @validates("name", "nickname")
+        def validate_names(self, value: str, data_key: str) -> None:
+            if len(value) < 3:
+                raise ValidationError(f'"{data_key}" too short')
+
+
 Remove ``ordered`` from the `SchemaOpts <marshmallow.SchemaOpts>` constructor
 *****************************************************************************
 

@@ -15,6 +15,7 @@ Features:
   accept their internal value types as valid input (:issue:`1415`).
   Thanks :user:`bitdancer` for the suggestion.
 - `@validates <marshmallow.validates>` accepts multiple field names (:issue:`1960`).
+  *Backwards-incompatible*: Decorated methods now receive ``data_key`` as a keyword argument.
   Thanks :user:`dpriskorn` for the suggestion and :user:`dharani7998` for the PR.
 
 Other changes:
