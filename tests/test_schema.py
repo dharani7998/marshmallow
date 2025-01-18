@@ -1740,11 +1740,11 @@ class TestFieldValidation:
             b = fields.Raw()
 
             @validates("a")
-            def validate_a(self, val):
+            def validate_a(self, val, **kwargs):
                 raise ValidationError({"code": "invalid_a"})
 
             @validates("b")
-            def validate_b(self, val):
+            def validate_b(self, val, **kwargs):
                 raise ValidationError({"code": "invalid_b"})
 
         s = MySchema(only=("b",))
@@ -1935,7 +1935,7 @@ class TestNestedSchema:
             inner = fields.Nested(Inner, many=True)
 
             @validates("inner")
-            def validates_inner(self, data):
+            def validates_inner(self, data, **kwargs):
                 raise ValidationError("not a chance")
 
         outer = Outer()

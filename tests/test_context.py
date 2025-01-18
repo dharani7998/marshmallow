@@ -111,7 +111,7 @@ class TestContext:
             foo = fields.Raw()
 
             @validates("foo")
-            def validate_foo(self, value):
+            def validate_foo(self, value, **kwargs):
                 if "foo_context" not in Context[dict].get():
                     raise ValidationError("Missing context")
 
@@ -132,7 +132,7 @@ class TestContext:
             foo = fields.Raw()
 
             @validates("foo")
-            def validate_foo(self, value):
+            def validate_foo(self, value, **kwargs):
                 if "foo_context" not in Context[dict].get():
                     raise ValidationError("Missing context")
 

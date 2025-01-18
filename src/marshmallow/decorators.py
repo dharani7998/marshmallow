@@ -87,6 +87,9 @@ def validates(*field_names: str) -> Callable[..., Any]:
     """Register a validator method for field(s).
 
     :param field_names: Names of the fields that the method validates.
+
+    .. versionchanged:: 4.0.0 Accepts multiple field names as positional arguments.
+    .. versionchanged:: 4.0.0 Decorated method receives ``data_key`` as a keyword argument.
     """
     return set_hook(None, VALIDATES, field_names=field_names)
 

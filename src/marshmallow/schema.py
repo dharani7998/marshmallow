@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import datetime as dt
 import decimal
+import functools
 import inspect
 import json
 import typing
@@ -1097,6 +1098,7 @@ class Schema(metaclass=SchemaMeta):
     def _invoke_field_validators(self, *, error_store: ErrorStore, data, many: bool):
         for attr_name, _, validator_kwargs in self._hooks[VALIDATES]:
             validator = getattr(self, attr_name)
+
             field_names = validator_kwargs["field_names"]
 
             for field_name in field_names:
@@ -1110,6 +1112,8 @@ class Schema(metaclass=SchemaMeta):
                 data_key = (
                     field_obj.data_key if field_obj.data_key is not None else field_name
                 )
+                do_validate = functools.partial(validator, data_key=data_key)
+
                 if many:
                     for idx, item in enumerate(data):
                         try:
@@ -1118,7 +1122,7 @@ class Schema(metaclass=SchemaMeta):
                             pass
                         else:
                             validated_value = self._call_and_store(
-                                getter_func=validator,
+                                getter_func=do_validate,
                                 data=value,
                                 field_name=data_key,
                                 error_store=error_store,
@@ -1133,7 +1137,7 @@ class Schema(metaclass=SchemaMeta):
                         pass
                     else:
                         validated_value = self._call_and_store(
-                            getter_func=validator,
+                            getter_func=do_validate,
                             data=value,
                             field_name=data_key,
                             error_store=error_store,
