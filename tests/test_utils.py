@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import datetime as dt
-from collections import namedtuple
 from copy import copy, deepcopy
+from typing import NamedTuple
 
 import pytest
 
@@ -12,7 +14,9 @@ def test_missing_singleton_copy():
     assert deepcopy(utils.missing) is utils.missing
 
 
-PointNT = namedtuple("PointNT", ["x", "y"])
+class PointNT(NamedTuple):
+    x: int | None
+    y: int | None
 
 
 class PointClass:
@@ -120,13 +124,13 @@ def test_from_timestamp_with_negative_value():
 
 def test_from_timestamp_with_overflow_value():
     value = 9223372036854775
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="out of range"):
         utils.from_timestamp(value)
 
 
 # Regression test for https://github.com/marshmallow-code/marshmallow/issues/540
 def test_function_field_using_type_annotation():
-    def get_split_words(value: str):  # noqa
+    def get_split_words(value: str):
         return value.split(";")
 
     class MySchema(Schema):

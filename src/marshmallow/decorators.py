@@ -93,9 +93,9 @@ def validates(field_name: str) -> Callable[..., Any]:
 
 def validates_schema(
     fn: Callable[..., Any] | None = None,
-    pass_collection: bool = False,
-    pass_original: bool = False,
-    skip_on_field_errors: bool = True,
+    pass_collection: bool = False,  # noqa: FBT001, FBT002
+    pass_original: bool = False,  # noqa: FBT001, FBT002
+    skip_on_field_errors: bool = True,  # noqa: FBT001, FBT002
 ) -> Callable[..., Any]:
     """Register a schema-level validator.
 
@@ -127,7 +127,8 @@ def validates_schema(
 
 
 def pre_dump(
-    fn: Callable[..., Any] | None = None, pass_collection: bool = False
+    fn: Callable[..., Any] | None = None,
+    pass_collection: bool = False,  # noqa: FBT001, FBT002
 ) -> Callable[..., Any]:
     """Register a method to invoke before serializing an object. The method
     receives the object to be serialized and returns the processed object.
@@ -144,8 +145,8 @@ def pre_dump(
 
 def post_dump(
     fn: Callable[..., Any] | None = None,
-    pass_collection: bool = False,
-    pass_original: bool = False,
+    pass_collection: bool = False,  # noqa: FBT001, FBT002
+    pass_original: bool = False,  # noqa: FBT001, FBT002
 ) -> Callable[..., Any]:
     """Register a method to invoke after serializing an object. The method
     receives the serialized object and returns the processed object.
@@ -164,7 +165,8 @@ def post_dump(
 
 
 def pre_load(
-    fn: Callable[..., Any] | None = None, pass_collection: bool = False
+    fn: Callable[..., Any] | None = None,
+    pass_collection: bool = False,  # noqa: FBT001, FBT002
 ) -> Callable[..., Any]:
     """Register a method to invoke before deserializing an object. The method
     receives the data to be deserialized and returns the processed data.
@@ -184,8 +186,8 @@ def pre_load(
 
 def post_load(
     fn: Callable[..., Any] | None = None,
-    pass_collection: bool = False,
-    pass_original: bool = False,
+    pass_collection: bool = False,  # noqa: FBT001, FBT002
+    pass_original: bool = False,  # noqa: FBT001, FBT002
 ) -> Callable[..., Any]:
     """Register a method to invoke after deserializing an object. The method
     receives the deserialized data and returns the processed data.
@@ -207,7 +209,10 @@ def post_load(
 
 
 def set_hook(
-    fn: Callable[..., Any] | None, tag: str, many: bool = False, **kwargs: Any
+    fn: Callable[..., Any] | None,
+    tag: str,
+    many: bool = False,  # noqa: FBT001, FBT002
+    **kwargs: Any,
 ) -> Callable[..., Any]:
     """Mark decorated function as a hook to be picked up later.
     You should not need to use this method directly.

@@ -1,3 +1,4 @@
+# ruff: noqa: F841, SLF001
 from __future__ import annotations
 
 import abc
@@ -42,42 +43,35 @@ if typing.TYPE_CHECKING:
 
 
 __all__ = [
-    "Field",
-    "Raw",
-    "Nested",
-    "Mapping",
-    "Dict",
-    "List",
-    "Tuple",
-    "String",
-    "UUID",
-    "Number",
-    "Integer",
-    "Decimal",
-    "Boolean",
-    "Float",
-    "DateTime",
-    "NaiveDateTime",
-    "AwareDateTime",
-    "Time",
-    "Date",
-    "TimeDelta",
-    "Url",
-    "URL",
-    "Email",
     "IP",
-    "IPv4",
-    "IPv6",
-    "IPInterface",
-    "IPv4Interface",
-    "IPv6Interface",
-    "Enum",
-    "Method",
-    "Function",
-    "Str",
+    "URL",
+    "UUID",
+    "AwareDateTime",
     "Bool",
-    "Int",
+    "Boolean",
     "Constant",
+    "Date",
+    "DateTime",
+    "Decimal",
+    "Dict",
+    "Email",
+    "Enum",
+    "Field",
+    "Float",
+    "Function",
+    "IPInterface",
+    "IPv4",
+    "IPv4Interface",
+    "IPv6",
+    "IPv6Interface",
+    "Int",
+    "Integer",
+    "List",
+    "Mapping",
+    "Method",
+    "NaiveDateTime",
+    "Nested",
+    "Number",
     "Pluck",
 ]
 
@@ -107,10 +101,9 @@ def _resolve_field_instance(cls_or_instance: Field | type[Field]) -> Field:
         if not issubclass(cls_or_instance, Field):
             raise _FieldInstanceResolutionError
         return cls_or_instance()
-    else:
-        if not isinstance(cls_or_instance, Field):
-            raise _FieldInstanceResolutionError
-        return cls_or_instance
+    if not isinstance(cls_or_instance, Field):
+        raise _FieldInstanceResolutionError
+    return cls_or_instance
 
 
 class Field(typing.Generic[_InternalT]):
@@ -450,7 +443,9 @@ class Nested(Field):
             name = fields.Str()
             # Use lambda functions when you need two-way nesting or self-nesting
             parent = fields.Nested(lambda: ParentSchema(only=("id",)), dump_only=True)
-            siblings = fields.List(fields.Nested(lambda: ChildSchema(only=("id", "name"))))
+            siblings = fields.List(
+                fields.Nested(lambda: ChildSchema(only=("id", "name")))
+            )
 
 
         class ParentSchema(Schema):
@@ -779,7 +774,7 @@ class Tuple(Field[tuple]):
         super().__init__(**kwargs)
         if not utils.is_collection(tuple_fields):
             raise ValueError(
-                "tuple_fields must be an iterable of Field classes or " "instances."
+                "tuple_fields must be an iterable of Field classes or instances."
             )
 
         try:
@@ -799,9 +794,9 @@ class Tuple(Field[tuple]):
         super()._bind_to_schema(field_name, parent)
         new_tuple_fields = []
         for field in self.tuple_fields:
-            field = copy.deepcopy(field)
-            field._bind_to_schema(field_name, self)
-            new_tuple_fields.append(field)
+            new_field = copy.deepcopy(field)
+            new_field._bind_to_schema(field_name, self)
+            new_tuple_fields.append(new_field)
 
         self.tuple_fields = new_tuple_fields
 
@@ -924,7 +919,7 @@ class Number(Field[_NumT]):
 
     def _format_num(self, value) -> _NumT:
         """Return the number value for value, given this field's `num_type`."""
-        return self.num_type(value)  # type: ignore
+        return self.num_type(value)  # type: ignore[call-arg]
 
     def _validated(self, value: typing.Any) -> _NumT:
         """Format the value or raise a :exc:`ValidationError` if an error occurs."""
@@ -1208,7 +1203,9 @@ class _TemporalField(Field[_D], metaclass=abc.ABCMeta):
     }
 
     def __init__(
-        self, format: str | None = None, **kwargs: Unpack[_BaseFieldKwargs]
+        self,
+        format: str | None = None,  # noqa: A002
+        **kwargs: Unpack[_BaseFieldKwargs],
     ) -> None:
         super().__init__(**kwargs)
         # Allow this to be None. It may be set later in the ``_serialize``
@@ -1315,7 +1312,7 @@ class NaiveDateTime(DateTime):
 
     def __init__(
         self,
-        format: str | None = None,
+        format: str | None = None,  # noqa: A002
         *,
         timezone: dt.timezone | None = None,
         **kwargs: Unpack[_BaseFieldKwargs],
@@ -1352,7 +1349,7 @@ class AwareDateTime(DateTime):
 
     def __init__(
         self,
-        format: str | None = None,
+        format: str | None = None,  # noqa: A002
         *,
         default_timezone: dt.tzinfo | None = None,
         **kwargs: Unpack[_BaseFieldKwargs],
@@ -1570,8 +1567,7 @@ class Mapping(Field[_MappingT]):
                 self.key_field = _resolve_field_instance(keys)
             except _FieldInstanceResolutionError as error:
                 raise ValueError(
-                    '"keys" must be a subclass or instance of '
-                    "marshmallow.fields.Field."
+                    '"keys" must be a subclass or instance of marshmallow.fields.Field.'
                 ) from error
 
         if values is None:
@@ -1606,16 +1602,15 @@ class Mapping(Field[_MappingT]):
         if not self.value_field and not self.key_field:
             return self.mapping_type(value)
 
-        #  Serialize keys
+        # Serialize keys
         if self.key_field is None:
-            keys = {k: k for k in value.keys()}
+            keys = {k: k for k in value}
         else:
             keys = {
-                k: self.key_field._serialize(k, None, None, **kwargs)
-                for k in value.keys()
+                k: self.key_field._serialize(k, None, None, **kwargs) for k in value
             }
 
-        #  Serialize values
+        # Serialize values
         result = self.mapping_type()
         if self.value_field is None:
             for k, v in value.items():
@@ -1635,18 +1630,18 @@ class Mapping(Field[_MappingT]):
 
         errors = collections.defaultdict(dict)
 
-        #  Deserialize keys
+        # Deserialize keys
         if self.key_field is None:
-            keys = {k: k for k in value.keys()}
+            keys = {k: k for k in value}
         else:
             keys = {}
-            for key in value.keys():
+            for key in value:
                 try:
                     keys[key] = self.key_field.deserialize(key, **kwargs)
                 except ValidationError as error:
                     errors[key]["key"] = error.messages
 
-        #  Deserialize values
+        # Deserialize values
         result = self.mapping_type()
         if self.value_field is None:
             for k, v in value.items():

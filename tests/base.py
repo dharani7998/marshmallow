@@ -98,6 +98,7 @@ class User:
     def __init__(
         self,
         name,
+        *,
         age=0,
         id_=None,
         homepage=None,
@@ -137,7 +138,7 @@ class User:
         self.relatives = []
         self.various_data = various_data or {
             "pets": ["cat", "dog"],
-            "address": "1600 Pennsylvania Ave\n" "Washington, DC 20006",
+            "address": "1600 Pennsylvania Ave\nWashington, DC 20006",
         }
 
     @property
@@ -180,6 +181,7 @@ class Uppercased(fields.String):
     def _serialize(self, value, attr, obj, **kwargs):
         if value:
             return value.upper()
+        return None
 
 
 def get_lowername(obj):
@@ -187,8 +189,7 @@ def get_lowername(obj):
         return missing
     if isinstance(obj, dict):
         return obj.get("name", "").lower()
-    else:
-        return obj.name.lower()
+    return obj.name.lower()
 
 
 class UserSchema(Schema):
@@ -284,7 +285,7 @@ class BlogSchemaOnlyExclude(BlogSchema):
     user = fields.Nested(UserSchema, only=("name",), exclude=("name", "species"))
 
 
-class mockjson:  # noqa
+class mockjson:  # noqa: N801
     @staticmethod
     def dumps(val):
         return b"{'foo': 42}"

@@ -29,7 +29,7 @@ def test_field_aliases(alias, field):
 
 class TestField:
     def test_repr(self):
-        default = "œ∑´"
+        default = "œ∑´"  # noqa: RUF001
         field = fields.Raw(dump_default=default, attribute=None)
         assert repr(field) == (
             f"<fields.Raw(dump_default={default!r}, attribute=None, "
@@ -98,7 +98,7 @@ class TestParentAndName:
         baz = fields.Tuple((fields.Str(), fields.Int()))
         bax = fields.Dict(fields.Str(), fields.Int())
 
-    @pytest.fixture()
+    @pytest.fixture
     def schema(self):
         return self.MySchema()
 
@@ -226,12 +226,12 @@ class TestErrorMessages:
     class MyField(fields.Field):
         default_error_messages = {"custom": "Custom error message."}
 
-    error_messages = [
+    error_messages = (
         ("required", "Missing data for required field."),
         ("null", "Field may not be null."),
         ("custom", "Custom error message."),
         ("validator_failed", "Invalid value."),
-    ]
+    )
 
     def test_default_error_messages_get_merged_with_parent_error_messages_cstm_msg(
         self,
